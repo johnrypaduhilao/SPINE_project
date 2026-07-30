@@ -1,0 +1,47 @@
+{
+  "task": "Division by zero crashes the calculator. Calling divide(1, 0) raises an unhandled ZeroDivisionError; it should raise a CalculatorError with a clear message instead.",
+  "events": [
+    {
+      "thought": "I should find where divide is defined.",
+      "action": {
+        "name": "search_repo",
+        "args": {
+          "term": "divide"
+        }
+      },
+      "observation": "calculator.py:4: def divide(a, b):"
+    },
+    {
+      "thought": "Read the file to see the bug.",
+      "action": {
+        "name": "open_file",
+        "args": {
+          "path": "calculator.py"
+        }
+      },
+      "observation": "1\tclass CalculatorError(Exception):\n2\t    pass\n3\t\n4\tdef divide(a, b):\n5\t    return a / b\n"
+    },
+    {
+      "thought": "Guard against zero and raise CalculatorError.",
+      "action": {
+        "name": "edit_file",
+        "args": {
+          "path": "calculator.py",
+          "old": "def divide(a, b):\n    return a / b\n",
+          "new": "def divide(a, b):\n    if b == 0:\n        raise CalculatorError('division by zero')\n    return a / b\n"
+        }
+      },
+      "observation": "edit applied to calculator.py"
+    },
+    {
+      "thought": "The fix is applied; submitting.",
+      "action": {
+        "name": "done",
+        "args": {
+          "summary": "guard divide(b==0) with CalculatorError"
+        }
+      },
+      "observation": "submitted: guard divide(b==0) with CalculatorError"
+    }
+  ]
+}
