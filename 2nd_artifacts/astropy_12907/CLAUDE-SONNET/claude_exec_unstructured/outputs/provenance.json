@@ -1,0 +1,47 @@
+{
+  "schema_version": "provenance/1",
+  "note": "Sidecar provenance for an artifact whose JSON did not record it. The trajectory file itself carries only task and events. Nothing here was re-run; every field is either read from the artifact or recovered from the script and directory listing, and each is labelled.",
+  "describes_file": "outputs/unstructured_trajectory_astropy12907_run1.json",
+  "file_sha256": "476b255fa75bc4d277425b71e1dc846e5e6ece2ba1f2acc16877a406ba49804c",
+  "cell": "exec_unstructured",
+  "recorded_at_runtime": {
+    "task_present": true,
+    "events": 13,
+    "tool_usage": {
+      "search_repo": 2,
+      "open_file": 8,
+      "edit_file": 1,
+      "done": 1,
+      "final_answer": 1
+    },
+    "empty_thoughts": 5,
+    "repeated_actions": 0
+  },
+  "recovered_from_script": {
+    "source": "claude_exec_unstructured.py",
+    "model": "claude-sonnet-4-6",
+    "temperature": 0,
+    "max_turns": 30,
+    "max_obs_chars": 3000,
+    "caveat": "The script did not track an outcome value in this generation, so outcome was not written into the artifact."
+  },
+  "recovered_from_directory_listing": {
+    "written": "2026-07-19T21:50 local",
+    "original_filename": "armA_trajectory_astropy12907_run1.json",
+    "renamed_by_hand_to": "unstructured_trajectory_astropy12907_run1.json"
+  },
+  "derived_from_artifact": {
+    "outcome": "done",
+    "basis": "the trajectory contains one done tool call followed by one terminal message",
+    "budget_exhausted": false
+  },
+  "instance": {
+    "instance_id": "astropy__astropy-12907",
+    "base_commit": "d16bfe05a744909de4b27f5875fe0d4ed41ce607",
+    "instance_json_sha256": "a6f771e891bad27ebf842cd98d07fdb337069c181e191fa7815f8d71e8472ff7"
+  },
+  "not_verified": [
+    "model string is read from the script constant, not from a runtime record",
+    "resolved status is EXPECTED, not confirmed; the Docker harness has not run"
+  ]
+}
