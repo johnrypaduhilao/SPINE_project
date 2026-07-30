@@ -1,19 +1,19 @@
 """
 arm_a_unstructured.py
 
-Arm A of the pilot: the UNSTRUCTURED baseline agent, built in LangGraph per
-Dr. Nasim's July 10 request (same framework as Arm B; only the recording
-differs). It runs a plain ReAct loop (LangGraph's prebuilt agent) over
-simple repo tools and persists exactly what today's systems persist: a flat
-trajectory of thought / action / observation. No tuples, no definer, no
-parent pointers, by construction.
+Arm A of the pilot, the unstructured baseline agent. Written in LangGraph
+because Dr. Nasim asked for that on July 10 (same framework as Arm B, the
+only thing that differs is what gets recorded). It's a plain ReAct loop over
+a few simple repo tools, and it saves exactly what current systems save: a
+flat trajectory of thought / action / observation. There's nowhere for tuples,
+a definer, or parent pointers to live here, which is the point.
 
-Phases (stepwise, per the July 14 directive):
+Phases, done one at a time as the July 14 directive asks:
   Phase 0  --stub          wiring check, no API key, tiny fake repo
-  Phase 1  live, local     real LLM + a real local clone of the instance
-                           repo at base_commit; produces a REAL flat
-                           trajectory; tests NOT run yet (Docker phase)
-  Phase 2  Docker          test execution + % Resolved (separate step)
+  Phase 1  live, local     real LLM against a real local clone of the
+                           instance repo at base_commit; gives a genuine flat
+                           trajectory; tests don't run yet, that's Docker
+  Phase 2  Docker          test execution + % Resolved, a separate step
 
 Run (PowerShell):
   python arm_a_unstructured.py --stub
@@ -27,8 +27,9 @@ Live prerequisites:
     cd C:\\work\\astropy
     git checkout d16bfe05a744909de4b27f5875fe0d4ed41ce607
 
-Behavior stats are printed after each run because the July 14 directive is
-to UNDERSTAND the baseline's behavior before adding structure.
+Every run prints behavior stats at the end. That's because the July 14
+directive is to get a handle on how the baseline actually behaves before
+adding any structure on top of it.
 """
 
 import argparse
@@ -40,8 +41,8 @@ import time
 
 OUT_DIR = "outputs"
 MODEL = "gemini-3.5-flash"    # temperature 0, project convention
-MAX_TURNS = 30                # budget: loop stops here, run marked exhausted
-MAX_OBS_CHARS = 3000          # every observation is truncated to this
+MAX_TURNS = 30                # loop stops here and the run is marked exhausted
+MAX_OBS_CHARS = 3000          # observations get cut to this length, no exceptions
 
 STUB_INSTANCE = {
     "instance_id": "STUB__example-0001",
@@ -54,8 +55,9 @@ STUB_INSTANCE = {
 
 
 # ---------------------------------------------------------------------------
-# Tools: deliberately generic (search / open / edit / done), SWE-agent style.
-# All outputs bounded so a huge repo cannot flood the context.
+# Tools. Kept generic on purpose (search / open / edit / done), roughly the
+# SWE-agent set. Every output is bounded, otherwise a repo the size of astropy
+# floods the context on the first search.
 # ---------------------------------------------------------------------------
 
 def make_tools(repo_dir):
@@ -115,8 +117,8 @@ def make_tools(repo_dir):
 
 
 # ---------------------------------------------------------------------------
-# Trajectory capture: the flat log, and nothing else. Thought text is
-# whatever free text the model produced alongside each tool call.
+# Trajectory capture. The flat log and nothing else. "Thought" is just
+# whatever free text the model happened to emit next to each tool call.
 # ---------------------------------------------------------------------------
 
 def run_live(intent, repo_dir):
@@ -137,11 +139,11 @@ def run_live(intent, repo_dir):
     pending = None
     t0 = time.perf_counter()
 
-    # Stream instead of invoke: the loop is otherwise silent for many minutes
-    # (one LLM round trip per turn), which is indistinguishable from a hang.
-    # Each streamed message is folded into the flat trajectory as it arrives:
-    # an AI message's free text is the thought and its tool calls the actions;
-    # the following tool messages are the observations.
+    # Streaming rather than invoke, because with one LLM round trip per turn
+    # the loop sits silent for minutes at a stretch and there's no way to tell
+    # that apart from a hang. Messages get folded into the flat trajectory as
+    # they show up: free text on an AI message is the thought, its tool calls
+    # are the actions, and the tool messages after it are the observations.
     print("running (%s, up to %d turns) ..." % (MODEL, MAX_TURNS), flush=True)
     outcome = "stopped"
     try:
@@ -182,9 +184,9 @@ def run_live(intent, repo_dir):
                 print("budget of %d turns reached; stopping." % MAX_TURNS, flush=True)
                 break
     except GraphRecursionError:
-        # Budget exhaustion is a RESULT of the unstructured baseline, not a
-        # crash: the 30 turns already collected are the artifact we came for,
-        # so record them rather than losing them to the exception.
+        # Running out of budget is a finding about the unstructured baseline,
+        # not a crash. The 30 turns already collected are the artifact, so keep
+        # them instead of letting the exception throw them away.
         outcome = "budget_exhausted"
         print("recursion limit reached; recording partial trajectory.", flush=True)
     return events, time.perf_counter() - t0, outcome
@@ -218,7 +220,8 @@ def run_stub(repo_dir):
 
 
 # ---------------------------------------------------------------------------
-# Behavior stats: understand the baseline before adding structure (D2).
+# Behavior stats. Point of these is D2, know the baseline before structuring
+# anything.
 # ---------------------------------------------------------------------------
 
 def behavior_stats(events, wall, outcome):

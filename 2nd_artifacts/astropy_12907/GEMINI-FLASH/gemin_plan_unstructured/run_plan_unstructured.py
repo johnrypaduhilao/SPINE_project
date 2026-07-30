@@ -1,31 +1,30 @@
 """
 run_plan_unstructured.py
 
-The UNSTRUCTURED PLAN cell of the 2x2. Sends one request (temperature 0),
-no tools, no repository access, no schema, and saves whatever prose comes
-back, verbatim.
+The unstructured plan cell of the 2x2. One request at temperature 0, no
+tools, no repo access, no schema. Whatever prose comes back gets saved as-is.
 
-Why this cell exists. The pilot already has an executing agent (flat
-trajectory, tools, real repo) and a structured plan (policy tree, one call,
-no repo). Those differ on two axes at once, modality and representation, so
-coverage metrics scored across them are not like for like. This fills the
-missing cell so recall, precision and SIF are scored plan against plan with
-representation as the only variable. The executing agent is unaffected and
-remains the task-performance baseline for % Resolved at the Docker stage.
+Reason this cell had to exist: the pilot only had the executing agent (flat
+trajectory, tools, real repo) and the structured plan (policy tree, one call,
+no repo). Those two differ on modality and on representation at the same
+time, so coverage numbers scored across them aren't comparing like with like.
+With this cell in place, recall/precision/SIF get scored plan against plan
+and representation is the only thing that moves. Nothing about the executing
+agent changes; it stays the task-performance baseline for % Resolved once we
+get to the Docker stage.
 
-What is held constant against the structured request, and what is removed.
-KEPT VERBATIM : the persona sentence, the domain parenthetical, the intent,
-                the decompose-first instruction, the word "policies".
-REMOVED       : the POLICY MODEL tuple block, the abstraction levels, the
-                refinement rules, parent_id, definer, enforcer, the rationale
-                requirement, the worked example, and the JSON schema.
-The rule is that the vocabulary of the OBJECT stays and the vocabulary of the
-REPRESENTATION goes. Removing the schema and the worked example is not a
-confound; it is the manipulation. The example's content IS the format.
+Kept word for word from the structured request: the persona sentence, the
+domain parenthetical, the intent, the decompose-first instruction, and the
+word "policies". Taken out: the POLICY MODEL tuple block, the abstraction
+levels, the refinement rules, parent_id, definer, enforcer, the rationale
+requirement, the worked example, the JSON schema. The rule I followed was to
+keep vocabulary that describes the object and drop vocabulary that describes
+the representation. Dropping the schema and the worked example isn't a
+confound, it's the manipulation, since the example's content is the format.
 
-Patterns inherited from run_pilot_request.py (the Gemini generation, which is
-the merge target): streaming with partial capture, an outcome value written
-into the artifact, full provenance in the output, and a plain-terms summary.
+Copied the mechanics from run_pilot_request.py (the Gemini generation, which
+this merges back into): streaming with partial capture, an outcome value in
+the artifact, provenance in the output, plain-terms summary at the end.
 
 Run (PowerShell):
   $env:GOOGLE_API_KEY="..."     or    $env:ANTHROPIC_API_KEY="..."
@@ -35,8 +34,8 @@ Run (PowerShell):
 Dry run (no API key, no call; builds and prints the prompt only):
   python run_plan_unstructured.py --provider google --instance-json <path> --dry-run
 
-One call costs a modest amount; do not loop it. Manual scoring governs; the
-checks here are the reproducibility layer only.
+Each call costs a bit of money, so don't loop it. Scoring is manual; the
+checks in here are only the reproducibility layer.
 """
 
 import argparse
@@ -48,7 +47,7 @@ import time
 
 OUT_DIR = "outputs"
 TEMPERATURE = 0
-MAX_TOKENS = 8000          # same ceiling as run_pilot_request.py, both arms
+MAX_TOKENS = 8000          # same ceiling run_pilot_request.py uses, both arms
 SCHEMA_VERSION = "plan_unstructured/1"
 
 DEFAULT_MODEL = {
@@ -58,12 +57,12 @@ DEFAULT_MODEL = {
 
 INTENT_TOKEN = "{{INTENT}}"
 
-# The persona sentence and the domain parenthetical are copied character for
-# character out of request_pilot_astropy__astropy-12907.txt, including the
-# hard wrap after "natural-language" and the leading spaces on the domain
-# line. Only "a tree of structured policies" becomes "a set of policies", and
-# "imperative, executable policies" becomes "concrete, executable policies",
-# because tree, structured and imperative are representation vocabulary.
+# Persona sentence and domain parenthetical are pasted straight out of
+# request_pilot_astropy__astropy-12907.txt, character for character, hard wrap
+# after "natural-language" and leading spaces on the domain line included.
+# The only two changes: "a tree of structured policies" -> "a set of
+# policies", "imperative, executable policies" -> "concrete, executable
+# policies". Tree/structured/imperative are representation words, so they go.
 TEMPLATE = (
     "You operate a policy-refinement agent that governs a software-repository "
     "issue-resolution workspace. Refine a single high-level natural-language\n"
@@ -85,9 +84,9 @@ STUB_INSTANCE = {
     ),
 }
 
-# Mechanical presence counts, NOT scores. These exist so the claim "those
-# fields do not exist in this representation" is checkable rather than
-# asserted. Manual scoring governs TC/AC/EF.
+# Word counts, not scores. They're here so that "those fields don't exist in
+# this representation" is something a reader can check instead of just taking
+# my word for it. TC/AC/EF are still scored by hand.
 PROBE_TERMS = [
     "parent", "definer", "enforcer", "policy", "declarative", "definitive",
     "imperative", "rationale", "spatial", "temporal", "resource",
@@ -95,7 +94,7 @@ PROBE_TERMS = [
 
 
 def build_prompt(problem_statement):
-    """Exactly one substitution, with per-substitution proof printed."""
+    """One substitution only, and print enough to prove it went in clean."""
     if TEMPLATE.count(INTENT_TOKEN) != 1:
         sys.exit("template must contain exactly one %s" % INTENT_TOKEN)
     prompt = TEMPLATE.replace(INTENT_TOKEN, problem_statement)
@@ -125,12 +124,12 @@ def make_llm(provider, model):
 
 
 def stream_call(prompt, provider, model):
-    """Stream and keep whatever arrives.
+    """Stream it and hang on to whatever arrives.
 
-    Same reasoning as run_pilot_request.py: if the token budget runs out or
-    the stream drops mid-answer, the partial text is the artifact we came
-    for. Losing it to one failed blocking call is the wrong outcome, and a
-    truncated plan is itself a recordable result.
+    Same thinking as in run_pilot_request.py. If the token budget runs out or
+    the stream drops halfway through, the partial text is still the artifact I
+    came for, and I'd rather not lose it to a blocking call that raises. A
+    truncated plan is a result too, it just gets recorded as one.
     """
     llm = make_llm(provider, model)
     parts, truncated = [], None
@@ -146,7 +145,7 @@ def stream_call(prompt, provider, model):
             if c:
                 parts.append(c)
                 print(".", end="", flush=True)
-    except Exception as e:                       # keep the partial answer
+    except Exception as e:                       # don't drop what we already got
         truncated = str(e)
     wall = time.perf_counter() - t0
     print()
