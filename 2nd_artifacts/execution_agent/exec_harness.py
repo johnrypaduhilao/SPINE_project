@@ -1,11 +1,11 @@
 """
 exec_harness.py
 
-Execute arm, stage 7. STATUS: skeleton, stub-verified, no live run yet.
+Execute arm, stage 7. Skeleton; stub-verified, no live run yet.
 
-Design (as agreed and shown on pipeline_execute_arm.png):
-  one harness, one budget (MAX_TURNS=30), one record schema, temperature 0.
-  The plan handed to the agent is the ONLY variable.
+Design (see pipeline_execute_arm.png): one harness, one budget
+(MAX_TURNS=30), one record schema, temperature 0. The plan handed to the
+agent is the only variable.
 
 Configs (--config):
   noplan             no plan given                (banked run exists already)
@@ -13,23 +13,23 @@ Configs (--config):
   trajectory_plan    trajectory-step plan in the prompt   (conditional)
   structured_plan    policy tree in the prompt
 
-Every executed step emits ONE record with the SAME fields in every config:
+Every step emits one record with the same fields in every config:
   step_id, action, observation, timestamp, policy_id, provenance_mode
-policy_id is populated at emit time ONLY in structured_plan, where the
-prompt asks the agent to name the policy id it is executing on every tool
-call. In every other config the field exists and stays null, and
-provenance_mode says "reconstructed": attribution happens after the fact,
-by reading the whole log against the plan, which is the O(n) side of the
-comparison. Same schema everywhere; only whether the field CAN be
-populated differs. That is the design decision, not an accident.
 
-Gate: OFF for run 1, by decision. Delivery-type actions (git commit, push,
-PR) are NOT blocked; the sandbox has no network, and the harness RECORDS
-what a gate would have vetoed (gate_flag on the record). A recorded veto
-shows the exact node and its parent chain; gating one config and not the
-others would put a hand on the scale.
+policy_id is filled at emit time only in structured_plan, where the prompt
+asks the agent to name the policy id it is executing on each tool call.
+Elsewhere the field stays null and provenance_mode is "reconstructed":
+attribution is done afterwards by reading the log against the plan, which
+is the O(n) side of the comparison. Same schema throughout; only whether
+the field can be filled differs.
 
-Stepwise, per the Jul 14 directive:
+Gate is off for run 1. Delivery actions (git commit, push, PR) are not
+blocked - the sandbox has no network - but the harness records what a gate
+would have vetoed (gate_flag). A recorded veto shows the node and its
+parent chain. Gating one config and not the others would skew the
+comparison.
+
+Phases, per the Jul 14 directive:
   Phase 0  --stub      wiring check, no API key, scripted agent, fake repo
   Phase 1  live        real LLM + local clone at base_commit
   Phase 2  Docker      swebench harness, % Resolved, sweagent CLI reference
@@ -39,7 +39,7 @@ Run (PowerShell):
   python exec_harness.py --config structured_plan --provider anthropic ^
       --repo-dir C:\\work\\astropy --instance-json <path> --plan-file <path>
 
-TODO(pilot) markers are the build order, same convention as
+TODO(pilot) markers give the build order, same convention as
 pilot_swebench_spine.py.
 """
 
@@ -52,27 +52,32 @@ import time
 from datetime import datetime, timezone
 
 OUT_DIR = "outputs"
-MAX_TURNS = 30            # OUR configured cap, not a benchmark standard
+MAX_TURNS = 30            # our cap, not a benchmark standard
 MAX_OBS_CHARS = 3000
 TEMPERATURE = 0
 SCHEMA_VERSION = "exec_record/1"
 
 DEFAULT_MODEL = {
-    "openai": "gpt5.5",
+    "google": "gemini-3.5-flash",       # banked runs, kept reproducible
     "anthropic": "claude-sonnet-4-6",
+    # same tier as Sonnet (balanced), per the Jul 29 check.
+    # TODO(pilot) 7: at wiring time check the OpenAI docs that this id is
+    # live and that it takes temperature=0 - the GPT-5 reasoning family has
+    # rejected the parameter before. If it isn't settable, note it in the
+    # run provenance as a disclosed asymmetry rather than dropping it.
+    "openai": "gpt-5.6-terra",
 }
 
 CONFIGS = ["noplan", "unstructured_plan", "trajectory_plan", "structured_plan"]
 
-# Actions a gate WOULD veto (recorded, never blocked; see docstring).
+# actions a gate would veto - recorded, never blocked (see docstring)
 GATE_PATTERNS = ["commit", "push", "pull request", "pull_request", "pr "]
 
 
-# ---------------------------------------------------------------------------
-# Plan loading: each config reads its own artifact type, and what gets
-# injected into the prompt is the plan VERBATIM (structured: the JSON tree;
-# trajectory: the parsed steps or raw text; unstructured: the prose).
-# ---------------------------------------------------------------------------
+# --- plan loading ----------------------------------------------------------
+# Each config reads its own artifact type and the plan goes into the prompt
+# verbatim: structured = the JSON tree, trajectory = parsed steps or raw
+# text, unstructured = the prose.
 
 def load_plan(config, plan_file):
     if config == "noplan":
@@ -81,13 +86,13 @@ def load_plan(config, plan_file):
         sys.exit("%s needs --plan-file" % config)
     data = json.load(open(plan_file, encoding="utf-8"))
     if config == "structured_plan":
-        # the pilot tree artifact: {"policies": [...]}
+        # pilot tree artifact: {"policies": [...]}
         tree = data if "policies" in data else json.loads(data["response_text"])
         return tree, "%d policies" % len(tree["policies"])
     if config == "trajectory_plan":
         steps = data.get("parsed_steps")
         if steps is None:
-            # Claude's run 1 never parsed; the raw text IS the artifact.
+            # Claude's run 1 never parsed, so the raw text is the artifact
             return data["response_text"], "raw text (parse failed, disclosed)"
         return steps, "%d steps" % len(steps)
     if config == "unstructured_plan":
@@ -108,14 +113,12 @@ def build_prompt(config, plan, repo_dir, intent):
     if config == "structured_plan":
         extra = ("\nOn EVERY tool call, state which policy id you are "
                  "executing by prefixing your reasoning with [P<id>].")
-        # TODO(pilot) 3: parse the [P<id>] prefix out of the AI message and
-        # write it into the record's policy_id at emit time.
+        # TODO(pilot) 3: pull the [P<id>] prefix off the AI message and write
+        # it into policy_id at emit time.
     return base + "\n\nPLAN (follow it; deviate only with stated reason):\n" + plan_text + extra
 
 
-# ---------------------------------------------------------------------------
-# The record schema: identical in every config.
-# ---------------------------------------------------------------------------
+# --- record schema, identical in every config ------------------------------
 
 def make_record(step_id, action, observation, policy_id, config):
     gate_flag = any(p in json.dumps(action).lower() for p in GATE_PATTERNS)
@@ -125,18 +128,17 @@ def make_record(step_id, action, observation, policy_id, config):
         "action": action,
         "observation": (observation or "")[:MAX_OBS_CHARS],
         "timestamp": datetime.now(timezone.utc).isoformat(),
-        "policy_id": policy_id,          # populated only in structured_plan
+        "policy_id": policy_id,          # only set in structured_plan
         "provenance_mode": ("recorded" if config == "structured_plan"
                             else "reconstructed"),
-        "gate_flag": gate_flag,          # what a gate WOULD have vetoed
+        "gate_flag": gate_flag,
     }
 
 
-# ---------------------------------------------------------------------------
-# Tools: same four as the banked exec run, deliberately unchanged so the
-# noplan baseline stays comparable.  TODO(pilot) 5: lift these verbatim out
-# of the banked script instead of duplicating them here.
-# ---------------------------------------------------------------------------
+# --- tools -----------------------------------------------------------------
+# Same four as the banked exec run, left unchanged so the noplan baseline
+# stays comparable. TODO(pilot) 5: import these from the banked script
+# instead of duplicating them.
 
 def make_tools(repo_dir):
     def search_repo(term: str) -> str:
@@ -157,18 +159,15 @@ def make_tools(repo_dir):
     return [search_repo, open_file, edit_file, done]
 
 
-# ---------------------------------------------------------------------------
-# The LangGraph action graph. Same shape for all four configs; the PLAN slot
-# in the state is the only thing that differs, which is the design.
+# --- LangGraph action graph ------------------------------------------------
+# Same shape for all four configs; only the plan slot in the state differs.
 #
 #   inject_plan -> agent_turn -> emit_record -> budget_gate -+-> agent_turn
 #                                                            +-> finish
 #
-# inject_plan is the PLACEHOLDER: it takes whatever load_plan returned
-# (None / prose / trajectory steps / policy tree) and writes it into state
-# unchanged. Everything downstream reads state["plan"] and never cares which
-# representation it is; only build_prompt and the attribution parse do.
-# ---------------------------------------------------------------------------
+# inject_plan writes whatever load_plan returned (None / prose / trajectory
+# steps / policy tree) into the state unchanged. Only build_prompt and the
+# attribution parse care which representation it is.
 
 from typing import TypedDict, Optional, Any, List
 
@@ -180,7 +179,7 @@ class AgentState(TypedDict):
     plan_desc: str
     prompt: str
     turn: int
-    pending: Optional[dict]   # thought+action awaiting its observation
+    pending: Optional[dict]   # thought+action waiting on its observation
     records: List[dict]
     outcome: str
 
@@ -188,19 +187,19 @@ class AgentState(TypedDict):
 def build_graph(tools, agent_fn):
     """Compile the execute-arm graph.
 
-    agent_fn(state) -> (thought, action_name, args) | None is the ONLY seam
+    agent_fn(state) -> (thought, action_name, args) | None is the seam
     between stub and live: the stub passes a scripted function, live passes
-    the LLM turn (TODO(pilot) 1). Returned object is a
-    langgraph.graph.state.CompiledStateGraph (type-verified below in
-    --stub, same convention as the banked exec script).
+    the LLM turn (TODO(pilot) 1). Returns a
+    langgraph.graph.state.CompiledStateGraph, type-checked below under
+    --stub as in the banked exec script.
     """
     from langgraph.graph import StateGraph, END
     tmap = {f.__name__: f for f in tools}
 
     def inject_plan(state: AgentState):
-        # PLACEHOLDER: the plan artifact goes into the state verbatim here.
-        # TODO(pilot) 6: for structured_plan, also index the tree by id so
-        # the attribution parse can validate [P<id>] against real nodes.
+        # placeholder - the plan artifact goes into the state verbatim.
+        # TODO(pilot) 6: for structured_plan, index the tree by id too, so
+        # the attribution parse can check [P<id>] against real nodes.
         prompt = build_prompt(state["config"], state["plan"],
                               "stub_repo", state["intent"])
         return {"prompt": prompt, "turn": 0, "records": [],
@@ -260,10 +259,9 @@ def build_graph(tools, agent_fn):
     return g.compile()
 
 
-# ---------------------------------------------------------------------------
-# Phase 0: scripted agent, proves the loop, the records, and the gate flag
-# without an API key.
-# ---------------------------------------------------------------------------
+# --- phase 0 ---------------------------------------------------------------
+# Scripted agent: exercises the loop, the records and the gate flag with no
+# API key.
 
 def run_stub(config, tools):
     script = [
@@ -274,7 +272,7 @@ def run_stub(config, tools):
          {"path": "astropy/modeling/separable.py", "old": "x", "new": "y"}),
         ("[P7.1] commit the change" if config == "structured_plan"
          else "commit the change", "edit_file",
-         {"path": "commit", "old": "", "new": ""}),   # trips the gate flag
+         {"path": "commit", "old": "", "new": ""}),   # trips gate_flag
         ("done", "done", {"summary": "stub run"}),
     ]
 
@@ -283,8 +281,8 @@ def run_stub(config, tools):
         return script[i] if i < len(script) else None
 
     graph = build_graph(tools, scripted_agent)
-    # Type check, same convention as the banked exec script: create_agent-era
-    # code documents that the compiled object IS a LangGraph graph.
+    # type check, as in the banked exec script: records that the compiled
+    # object is a LangGraph graph
     from langgraph.graph.state import CompiledStateGraph
     assert isinstance(graph, CompiledStateGraph), type(graph)
     final = graph.invoke({"config": config,
@@ -296,11 +294,14 @@ def run_stub(config, tools):
 
 def run_live(config, prompt, provider, model, tools):
     # TODO(pilot) 1: LangChain v1 create_agent over the four tools, streaming
-    # with live progress, GraphRecursionError recorded as a RESULT with the
-    # partial trajectory. Lift the loop from the banked Gemini exec script
-    # (the merge target: it has outcome tracking and budget handling).
-    # TODO(pilot) 2: fold each streamed AI message + tool result into ONE
-    # record via make_record, exactly as run_stub does.
+    # with live progress, GraphRecursionError kept as a result plus the
+    # partial trajectory. Take the loop from the banked Gemini exec script -
+    # it already has outcome tracking and budget handling.
+    # Providers: ChatGoogleGenerativeAI / ChatAnthropic / ChatOpenAI (pip
+    # install langchain-openai for the third). Check TODO(pilot) 7 in
+    # DEFAULT_MODEL for the OpenAI temperature caveat before the first run.
+    # TODO(pilot) 2: fold each streamed AI message + tool result into one
+    # record via make_record, as run_stub does.
     # TODO(pilot) 4: outputs named exec_<config>_<instance>_<model>_run<n>.json
     sys.exit("live mode not wired yet; run --stub. Build order: TODO(pilot) 1-5.")
 
@@ -319,7 +320,7 @@ def behavior_stats(records, outcome):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--config", choices=CONFIGS, required=True)
-    ap.add_argument("--provider", choices=["google", "anthropic"])
+    ap.add_argument("--provider", choices=["google", "anthropic", "openai"])
     ap.add_argument("--model", default=None)
     ap.add_argument("--repo-dir")
     ap.add_argument("--instance-json")

@@ -1,5 +1,5 @@
 """Build ground_truth_astropy12907_DRAFT.xlsx: answer key + GT tree +
-adjudication list, every judgment row marked PROVISIONAL for John.
+adjudication list, every judgment row marked PROVISIONAL for author.
 Template style per project convention: Calibri; bold-13 merged title;
 10pt merged description; bold-11 headers; 11pt body; formulas for counts.
 """
@@ -44,7 +44,7 @@ cols = ["GT id", "Required step", "Grounded in (Ctrl-F anchor)", "Status"]
 sheet_head(ws, len(cols),
            "Ground truth answer key: astropy__astropy-12907 (DRAFT)",
            "Required steps implied by the intent, each grounded in the issue "
-           "text or benchmark artifacts. EVERY ROW IS PROVISIONAL: John "
+           "text or benchmark artifacts. EVERY ROW IS PROVISIONAL: author "
            "adjudicates (accept / edit / strike) and sets Status. Legend: "
            "edit only the Status and text cells of highlighted rows; "
            "example of an accepted row: Status = ACCEPTED.")
@@ -168,9 +168,9 @@ for i, w in enumerate(widths, 1):
 
 # ------------------------- Sheet 3: Adjudication -------------------------
 ws = wb.create_sheet("Adjudication")
-cols = ["#", "Decision needed", "Draft recommendation", "John's ruling"]
+cols = ["#", "Decision needed", "Draft recommendation", "Author's ruling"]
 sheet_head(ws, len(cols),
-           "Adjudication list: decisions that are John's (and Dr. Nasim's)",
+           "Adjudication list: decisions of authors",
            "Each row is a judgment call the draft could not make. Record the "
            "ruling in the last column; rulings override every draft row in "
            "the other sheets. Example ruling format: 'ACCEPTED as drafted' "
@@ -192,14 +192,14 @@ adj = [
      "Beyond-intent; same precedent as item 2."),
     (4, "Model tree has imperative-under-imperative chains (P5.1 under P5; "
         "P6.1 under P6), a shape prior trees never had.",
-     "Surface to Dr. Nasim; request does not forbid it; no GT change."),
+     "Surface to co-author; request does not forbid it; no GT change."),
     (5, "Does the safety-first invariant (arbitrate) convention extend to "
         "repair-style intents? (GT row P8)",
      "Keep for cross-GT uniformity, excluded from recall as always; strike "
-     "if Dr. Nasim rules it enforcement-only."),
+     "if co-author rules it enforcement-only."),
     (6, "Model's P1 Monitor node: does a one-shot repair intent warrant a "
         "continuous Monitor policy?",
-     "Contestable; lean relevant-but-marginal for precision; John rules."),
+     "Contestable; lean relevant-but-marginal for precision; author rules."),
     (7, "Disclosure: model tree names _cstack without repo access "
         "(training contamination from a famous bug).",
      "Disclose wherever the tree is presented; specificity and coverage "

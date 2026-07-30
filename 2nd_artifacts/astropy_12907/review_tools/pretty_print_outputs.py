@@ -1,27 +1,25 @@
 """
 pretty_print_outputs.py
 
-Turn the raw JSON files in outputs/ into something a human can actually read.
+Make the raw JSON in outputs/ readable.
 
-The raw files are valid JSON but unreadable: every diff, issue body and test
-list is squashed onto one line as a single string full of \\n escapes, and a
-few fields (FAIL_TO_PASS, PASS_TO_PASS) are JSON *inside* a JSON string.
+The raw files are valid JSON but hard to read: every diff, issue body and
+test list sits on one line as a single string full of \\n escapes, and
+FAIL_TO_PASS / PASS_TO_PASS are JSON inside a JSON string.
 
-This script never modifies an original file. For each source file it writes
-new companion files next to it:
+Originals are never modified. For each source file, two companions are
+written alongside it:
 
-  <name>.pretty.json    valid JSON, indented, embedded JSON strings expanded
-                        into real arrays/objects, and every multi-line string
-                        split into an array of lines so no \\n or \\r escapes
-                        survive anywhere in the file
-  <name>.readable.txt   plain text report where multi-line fields are printed
-                        as real lines, blank-line separated, indented
+  <name>.pretty.json    indented JSON, embedded JSON strings expanded into
+                        real arrays/objects, multi-line strings split into
+                        arrays of lines
+  <name>.readable.txt   plain text report, multi-line fields printed as real
+                        lines, blank-line separated and indented
 
-JSON cannot hold a literal newline inside a string, so a field like `patch`
-can only be one escaped line -- unless it stops being one string. Splitting it
-into ["diff --git ...", "--- a/...", ...] keeps the file valid JSON while
-putting one real source line on each row. Pass --raw-strings to keep the
-original single-string shape instead.
+The line-splitting is the point: a JSON string can't hold a newline, so
+`patch` is stuck on one escaped line while it stays a single string. As
+["diff --git ...", "--- a/...", ...] it is still valid JSON, one source line
+per row. --raw-strings keeps the original single-string shape.
 
 Run (PowerShell uses python, Git Bash uses py):
   python pretty_print_outputs.py                    process outputs/
@@ -38,8 +36,8 @@ import argparse
 import json
 from pathlib import Path
 
-# Files this script itself generates, so re-running never processes its own
-# output and never recurses.
+# what this script generates - skipped on re-runs so it never eats its own
+# output
 GENERATED_SUFFIXES = (".pretty.json", ".readable.txt")
 
 TEXT_WIDTH = 78
@@ -48,9 +46,8 @@ TEXT_WIDTH = 78
 def expand_embedded_json(value):
     """Recursively parse strings that are themselves JSON documents.
 
-    SWE-bench stores FAIL_TO_PASS / PASS_TO_PASS as a JSON array encoded
-    inside a string. Left alone they print as one long escaped line; parsed
-    they become real arrays that indent one item per line.
+    SWE-bench stores FAIL_TO_PASS / PASS_TO_PASS as a JSON array encoded in
+    a string, which otherwise prints as one long escaped line.
     """
     if isinstance(value, dict):
         return {key: expand_embedded_json(item) for key, item in value.items()}
@@ -72,10 +69,8 @@ def expand_embedded_json(value):
 def split_multiline_strings(value):
     """Turn every multi-line string into an array of its lines.
 
-    A JSON string physically cannot contain a newline, so `patch` and
-    `problem_statement` are stuck on one escaped line for as long as they stay
-    single strings. As a list of lines they are still valid JSON, but each
-    source line lands on its own row and no \\n or \\r escape remains.
+    See the module docstring: this is what gets `patch` and
+    `problem_statement` off a single escaped line.
     """
     if isinstance(value, dict):
         return {key: split_multiline_strings(item) for key, item in value.items()}
@@ -86,7 +81,7 @@ def split_multiline_strings(value):
         if "\n" not in text:
             return text
         lines = text.split("\n")
-        # A trailing newline would otherwise leave a pointless "" last element.
+        # drop the "" a trailing newline leaves behind
         if lines and lines[-1] == "":
             lines.pop()
         return lines
@@ -94,18 +89,18 @@ def split_multiline_strings(value):
 
 
 def normalize_newlines(text: str) -> str:
-    """Collapse CRLF / CR to LF so the text report has no stray blank lines."""
+    """Collapse CRLF / CR to LF; stops stray blank lines in the text report."""
     return text.replace("\r\n", "\n").replace("\r", "\n")
 
 
 def indent_block(text: str, pad: str) -> str:
-    """Indent every line of a block, leaving blank lines truly blank."""
+    """Indent every line of a block; blank lines stay empty, not padded."""
     lines = normalize_newlines(text).split("\n")
     return "\n".join(pad + line if line.strip() else "" for line in lines)
 
 
 def render_value(value, depth: int, out: list) -> None:
-    """Append a human-readable rendering of one value to `out`."""
+    """Append the rendering of one value to `out`."""
     pad = "  " * depth
 
     if isinstance(value, dict):
@@ -143,10 +138,10 @@ def scalar_text(value) -> str:
 
 
 def render_field(key: str, value, depth: int, out: list) -> None:
-    """Render one `key: value` pair, choosing inline vs. block layout."""
+    """Render one `key: value` pair, inline or as a block."""
     pad = "  " * depth
 
-    # Short single-line scalar: keep it on the same line as the key.
+    # short single-line scalar stays on the key's line
     if not isinstance(value, (dict, list)):
         text = scalar_text(value)
         if "\n" not in normalize_newlines(text) and len(text) <= TEXT_WIDTH:
@@ -173,7 +168,7 @@ def build_text_report(data, title: str) -> str:
     out.append("")
     render_value(data, 0, out)
 
-    # Collapse runs of blank lines down to one, and end with a single newline.
+    # squeeze blank-line runs to one, end on a single newline
     cleaned: list = []
     for line in out:
         if not line.strip() and cleaned and not cleaned[-1].strip():
@@ -186,7 +181,7 @@ def build_text_report(data, title: str) -> str:
 
 def process_file(src: Path, indent: int, want_json: bool, want_text: bool,
                  raw_strings: bool = False) -> list:
-    """Write the requested companion files for one source file."""
+    """Write the companion files for one source file."""
     data = json.loads(src.read_text(encoding="utf-8"))
     expanded = expand_embedded_json(data)
     written = []

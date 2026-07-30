@@ -2,7 +2,7 @@
 arm_a_unstructured.py
 
 Arm A of the pilot, the unstructured baseline agent. Written in LangGraph
-because Dr. Nasim asked for that on July 10 (same framework as Arm B, the
+because co-author asked for that on July 10 (same framework as Arm B, the
 only thing that differs is what gets recorded). It's a plain ReAct loop over
 a few simple repo tools, and it saves exactly what current systems save: a
 flat trajectory of thought / action / observation. There's nowhere for tuples,
