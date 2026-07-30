@@ -1,0 +1,110 @@
+{
+    "intent": "Complete the requested household task safely and successfully",
+    "policies": [
+        {
+            "action": "complete the requested household task safely and successfully",
+            "constraints": {
+                "resource": "battery and payload capacity",
+                "spatial": "household boundaries",
+                "temporal": "task completion deadline"
+            },
+            "context": "household environment and task active",
+            "definer": "system",
+            "enforcer": "executive-system",
+            "id": "P0",
+            "level": "declarative",
+            "parent_id": null,
+            "rationale": "Formalizes the raw natural-language intent into the root declarative policy for the embodied agent."
+        },
+        {
+            "action": "continuously monitor task execution steps and surrounding environment for safety hazards",
+            "constraints": {
+                "resource": "sensor bandwidth",
+                "spatial": "agent perception field",
+                "temporal": "continuous"
+            },
+            "context": "task execution in progress",
+            "definer": "system",
+            "enforcer": "monitor",
+            "id": "P1",
+            "level": "definitive",
+            "parent_id": "P0",
+            "rationale": "Ensuring safety and success requires real-time perception of both task progress and potential environmental hazards."
+        },
+        {
+            "action": "evaluate task progress against success metrics and detect safety violations or structural blockages",
+            "constraints": {
+                "resource": "compute capacity",
+                "spatial": "planned trajectory path",
+                "temporal": "real-time evaluation cycle"
+            },
+            "context": "sensor data streaming",
+            "definer": "system",
+            "enforcer": "analyzer",
+            "id": "P2",
+            "level": "definitive",
+            "parent_id": "P1",
+            "rationale": "Raw monitor data must be analyzed to detect whether the current execution plan remains viable and safe."
+        },
+        {
+            "action": "determine or adjust the execution plan based on progress evaluations and safety risks",
+            "constraints": {
+                "resource": "kinematic constraints",
+                "spatial": "workspace layout",
+                "temporal": "re-planning latency limit"
+            },
+            "context": "plan evaluation complete",
+            "definer": "system",
+            "enforcer": "planner",
+            "id": "P3",
+            "level": "definitive",
+            "parent_id": "P2",
+            "rationale": "Dynamic environments require a planning layer to adapt the agent's strategy when anomalies or obstacles arise."
+        },
+        {
+            "action": "execute the nominal manipulation and navigation actions specified by the task plan",
+            "constraints": {
+                "resource": "actuator torque",
+                "spatial": "designated task zone",
+                "temporal": "planned step duration"
+            },
+            "context": "no safety hazards detected and plan is viable",
+            "definer": "system",
+            "enforcer": "executor",
+            "id": "P3.1",
+            "level": "imperative",
+            "parent_id": "P3",
+            "rationale": "If the environment is safe and the plan is valid, the agent should actively advance the task."
+        },
+        {
+            "action": "halt current motion and execute an emergency stop or collision avoidance maneuver",
+            "constraints": {
+                "resource": "maximum braking force",
+                "spatial": "safety clearance zone",
+                "temporal": "immediate response time"
+            },
+            "context": "imminent safety hazard or human proximity violation detected",
+            "definer": "system",
+            "enforcer": "executor",
+            "id": "P3.2",
+            "level": "imperative",
+            "parent_id": "P3",
+            "rationale": "Protecting humans and property requires an immediate cessation of standard actions when a hazard is detected."
+        },
+        {
+            "action": "pause execution, enter a safe standby state, and request human intervention",
+            "constraints": {
+                "resource": "communication link",
+                "spatial": "current agent position",
+                "temporal": "timeout threshold"
+            },
+            "context": "task blocked by unresolvable environment state or execution failure",
+            "definer": "system",
+            "enforcer": "executor",
+            "id": "P3.3",
+            "level": "imperative",
+            "parent_id": "P3",
+            "rationale": "When the agent cannot safely recover or complete the task autonomously, it must gracefully fail and seek help."
+        }
+    ]
+}

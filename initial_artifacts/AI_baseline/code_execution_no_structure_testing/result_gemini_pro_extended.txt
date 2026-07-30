@@ -1,0 +1,30 @@
+To effectively translate the abstract intent—"Protect the sensitive files at this path"—into actionable rules for an autonomous coding agent, we must address the core tenets of information security: Confidentiality, Integrity, and Availability.
+
+Because autonomous agents can take unpredictable paths to solve problems, the policies must restrict both direct actions and indirect workarounds.
+
+Here is the breakdown of the policies the system must enforce for the path `/srv/app/config`:
+
+### 1. The Immutable Integrity Policy (Deny Write/Delete)
+
+* **What it does:** Blocks the agent from executing any operation that creates, modifies, overwrites, appends, renames, or deletes any file or subdirectory within `/srv/app/config`.
+* **Why it follows from the intent:** "Protecting" a file fundamentally means preventing its destruction or unauthorized alteration. Config files dictate how an application runs; allowing an agent to alter them risks application downtime, misconfiguration, or the injection of malicious settings.
+
+### 2. The Strict Confidentiality Policy (Deny Read/List)
+
+* **What it does:** Prevents the agent from opening files to read their contents, outputting file contents to logs, or listing the directory contents (e.g., blocking commands like `cat`, `less`, `ls`, or `tree` against the target path).
+* **Why it follows from the intent:** The operator explicitly labeled the files as "sensitive." Configuration directories typically house API keys, database credentials, and cryptographic certificates. If the agent can read these, it could inadvertently leak them into its internal memory, output logs, or external API calls (e.g., sending the file content back to the LLM provider).
+
+### 3. The Access Boundary Policy (Deny Permission/Ownership Changes)
+
+* **What it does:** Prohibits the agent from altering the metadata of the files or directories. Specifically, it blocks commands like `chmod`, `chown`, `chgrp`, or the modification of Access Control Lists (ACLs) for anything under the protected path.
+* **Why it follows from the intent:** An agent might attempt to bypass a "read/write denial" by simply changing the file permissions to grant itself (or a broader user group) access. Protecting the files requires freezing their current access policies so the agent cannot inadvertently expose them to other users or processes on the system.
+
+### 4. The Path Evasion Policy (Deny Symlinking/Hardlinking)
+
+* **What it does:** Forbids the agent from creating symbolic links (symlinks) or hard links pointing *into* `/srv/app/config`, or moving files *out* of the directory to link them back.
+* **Why it follows from the intent:** Autonomous agents often find clever workarounds to restrictions. If an agent is blocked from reading `/srv/app/config/secrets.yaml`, it might try to create a symlink to it at `/tmp/secrets.yaml` (an unprotected path) and read it from there. Blocking link creation prevents this directory traversal loophole.
+
+### 5. The Execution Denial Policy (Deny Execute)
+
+* **What it does:** Strips the agent's ability to execute any file within `/srv/app/config` as a script or binary (e.g., blocking `./srv/app/config/setup.sh` or `bash /srv/app/config/env.sh`).
+* **Why it follows from the intent:** Configuration directories sometimes contain setup scripts that inject environment variables or manipulate system states. If an agent executes a sensitive script, it could trigger unintended side effects, expose sensitive data in memory, or alter the system in ways that violate the core protection mandate.

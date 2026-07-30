@@ -1,0 +1,209 @@
+@prefix code: <http://provenance.example/onto/code#> .
+@prefix uco:  <http://purl.org/cyber/> .
+@prefix d3f:  <http://d3fend.mitre.org/ontologies/d3fend.owl#> .
+@prefix owl:  <http://www.w3.org/2002/07/owl#> .
+@prefix rdf:  <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd:  <http://www.w3.org/2001/XMLSchema#> .
+
+#################################################################
+#  PROVENANCE — Code Execution domain ontology
+#
+#  Reuse spine (parallel to Zhao map/control/car in av_ontology.ttl):
+#    - UCO  (Unified Cybersecurity Ontology, Syed et al. AAAI 2016) -- VERIFIED
+#           IRIs reused below via owl:equivalentClass (http://purl.org/cyber/).
+#    - CWE  (MITRE) -- referenced by ID on each risk class (code:cweRef).
+#    - D3FEND (MITRE/NSA, OWL 2 DL) -- complementary countermeasure catalog;
+#           cited in comments. Exact d3f: technique IRIs to be wired in from
+#           d3fend.mitre.org against a live reasoner (not reachable from build env).
+#
+#  Level-ordering invariant (shared with AV): every refinement edge runs
+#  declarative -> definitive -> imperative, never backward.
+#################################################################
+
+code: a owl:Ontology ;
+    rdfs:comment "Code-execution domain KB for PROVENANCE. Reuses UCO/CWE; extends for the agent-execution (MAPE) layer. Grounds the answer_sheet_code.md GT steps." .
+
+code:abstractionLevel a owl:DatatypeProperty ;
+    rdfs:comment "declarative | definitive | imperative (ordering invariant enforced at refinement time)." .
+code:origin a owl:DatatypeProperty ;
+    rdfs:comment "hardcoded | generated | split." .
+code:groundsGTStep a owl:AnnotationProperty ;
+    rdfs:comment "Links an ontology element to the answer_sheet_code.md GT step it grounds." .
+code:cweRef a owl:AnnotationProperty .
+code:redcodeCat a owl:AnnotationProperty .
+
+#################################################################
+#  DOMAIN  (D) -- the artifacts an operation acts on
+#  Reused from UCO/CybOX where a published class exists.
+#################################################################
+
+code:File a owl:Class ; owl:equivalentClass uco:ucoFile ;
+    rdfs:comment "A file the operation reads/writes/deletes." ; code:groundsGTStep "C-03" .
+code:Process a owl:Class ; owl:equivalentClass uco:ucoProcess ;
+    rdfs:comment "A process the operation spawns/monitors/kills." ; code:groundsGTStep "C-03" .
+code:System a owl:Class ; owl:equivalentClass uco:ucoSystem ;
+    code:groundsGTStep "C-03" .
+code:OperatingSystem a owl:Class ; owl:equivalentClass uco:ucoOperatingSystem .
+code:NetworkEndpoint a owl:Class ; owl:equivalentClass uco:ucoNetworkState ;
+    rdfs:comment "A network endpoint/source the operation contacts." ; code:groundsGTStep "C-03,C-07" .
+
+# Extensions (no published class -- the agent-execution layer)
+code:Request a owl:Class ;
+    rdfs:comment "The user's code task, before decomposition (extension)." ; code:groundsGTStep "C-01" .
+code:Operation a owl:Class ;
+    rdfs:comment "A concrete code/command about to run at the execution checkpoint (extension)." ; code:groundsGTStep "C-04" .
+code:Sandbox a owl:Class ;
+    rdfs:comment "Isolated execution context (RedCode uses a Docker sandbox). Extension." ;
+    code:groundsGTStep "C-02" ; code:origin "hardcoded" .
+
+#################################################################
+#  RISK / WEAKNESS  (the hazards -- analog of FixDrive laws)
+#  Reused from UCO; each subclass carries its CWE id and RedCode category.
+#################################################################
+
+code:Weakness a owl:Class ; owl:equivalentClass uco:ucoWeakness ;
+    rdfs:comment "A condition that could become an exploitable vulnerability (CWE)." .
+code:Vulnerability a owl:Class ; owl:equivalentClass uco:ucoVulnerability .
+code:CWE a owl:Class ; owl:equivalentClass uco:ucoCWE .
+
+code:DestructiveFileOp a owl:Class ; rdfs:subClassOf code:Weakness ;
+    code:cweRef "CWE-...(destructive file deletion/overwrite)" ; code:redcodeCat "6,8" ;
+    code:groundsGTStep "C-05" ; code:origin "hardcoded" .
+code:DataExfiltration a owl:Class ; rdfs:subClassOf code:Weakness ;
+    owl:equivalentClass uco:ucoDirectoryExposure ;
+    code:cweRef "CWE-200" ; code:redcodeCat "1,4,5,7" ; code:groundsGTStep "C-06" .
+code:UntrustedAccess a owl:Class ; rdfs:subClassOf code:Weakness ;
+    code:cweRef "CWE-918" ; code:redcodeCat "2,3,10" ; code:groundsGTStep "C-07" .
+code:PrivilegeTampering a owl:Class ; rdfs:subClassOf code:Weakness ;
+    owl:equivalentClass uco:ucoPrivilegeEsc ;
+    code:cweRef "CWE-250,CWE-269" ; code:redcodeCat "9,11,17,18" ; code:groundsGTStep "C-08" .
+code:Injection a owl:Class ; rdfs:subClassOf code:Weakness ;
+    rdfs:seeAlso uco:ucoMaliciousCodeExecution ;
+    code:cweRef "CWE-78,CWE-94,CWE-95,CWE-502,CWE-22" ; code:redcodeCat "13,14,24" ;
+    code:groundsGTStep "C-09" .
+code:CodeQualityDefect a owl:Class ; rdfs:subClassOf code:Weakness ;
+    code:cweRef "CWE-330,CWE-327,CWE-478" ; code:redcodeCat "12,15,16,19,20,21,22,23,25" ;
+    code:groundsGTStep "C-10" .
+
+#################################################################
+#  ACTION  (A) -- enforcement / control (analog of Zhao DrivingAction)
+#  Superclass reused from UCO; primitives follow AgentSpec enforcements and
+#  align with MITRE D3FEND countermeasures.
+#################################################################
+
+code:EnforcementAction a owl:Class ; owl:equivalentClass uco:ucoCourseofAction ;
+    rdfs:comment "What the runtime gate does. Aligns with D3FEND countermeasures." .
+
+code:Allow a owl:Class ; rdfs:subClassOf code:EnforcementAction ;
+    rdfs:comment "Permit the operation (autonomic; AP=true)." ; code:groundsGTStep "C-11" .
+code:Block a owl:Class ; rdfs:subClassOf code:EnforcementAction ;
+    rdfs:comment "Halt the operation (AgentSpec 'stop'; D3FEND Process Termination / Execution Denial)." ;
+    code:groundsGTStep "C-12" ; code:origin "hardcoded" .
+code:RequireConfirmation a owl:Class ; rdfs:subClassOf code:EnforcementAction ;
+    rdfs:comment "Pause for human approval (AgentSpec 'user_inspection'; AP=false). Extension." ;
+    code:groundsGTStep "C-13" .
+code:Sanitize a owl:Class ; rdfs:subClassOf code:EnforcementAction ;
+    rdfs:comment "Transform the operation to a safe form (D3FEND input validation). " ;
+    code:groundsGTStep "C-11" .
+code:Isolate a owl:Class ; rdfs:subClassOf code:EnforcementAction ;
+    rdfs:comment "Run inside the sandbox (D3FEND Execution Isolation)." ; code:groundsGTStep "C-02" .
+code:ExecuteOperation a owl:Class ; rdfs:subClassOf code:EnforcementAction ;
+    rdfs:comment "Run the approved/sanitized operation (CodeAct execution). Extension." ;
+    code:groundsGTStep "C-14" .
+code:VerifyResult a owl:Class ;
+    rdfs:comment "Confirm the operation's result satisfies the request (CodeAct observation). Extension." ;
+    code:groundsGTStep "C-16" .
+
+#################################################################
+#  CONTEXT (CT) and CONSTRAINT (C) -- extensions
+#################################################################
+
+code:SourceTrust a owl:Class ; rdfs:comment "trusted | untrusted (whitelist membership)." .
+code:PrivilegeLevel a owl:Class .
+code:SandboxMode a owl:Class .
+
+#################################################################
+#  CONSTRAINT  C(R, S, T) -- explicit tri-partition (tuple-consistent).
+#  Each kind has a grounded code-domain meaning. Mirrors how the AV
+#  ontology split SpeedLimit/MinHeadway (S) and Deadline (T); code adds a
+#  richer Resource (R) axis that AV barely exercised.
+#################################################################
+
+code:Constraint a owl:Class ; rdfs:comment "The C(R,S,T) envelope of a policy." .
+
+# R -- Resource: compute / memory / process / disk budgets
+code:ResourceConstraint a owl:Class ; rdfs:subClassOf code:Constraint ;
+    rdfs:comment "R: bounds on compute resources the operation may consume." .
+code:ComputeBudget a owl:Class ; rdfs:subClassOf code:ResourceConstraint .
+code:MemoryLimit a owl:Class ; rdfs:subClassOf code:ResourceConstraint .
+code:ProcessLimit a owl:Class ; rdfs:subClassOf code:ResourceConstraint ;
+    rdfs:seeAlso uco:uconumChildProcesses ; rdfs:seeAlso uco:uconumProcessesRunning ;
+    rdfs:comment "Cap on spawned/running processes (RedCode #18 process mgmt, #21 amplification)." ;
+    code:groundsGTStep "C-08" .
+code:DiskQuota a owl:Class ; rdfs:subClassOf code:ResourceConstraint ;
+    rdfs:seeAlso uco:uconumOpenFiles .
+
+# S -- Spatial: the access SCOPE (namespace/geofence analog), not literal geometry
+code:SpatialConstraint a owl:Class ; rdfs:subClassOf code:Constraint ;
+    rdfs:comment "S: where the operation may act -- the access scope. Code analog of a geofence." .
+code:PathScope a owl:Class ; rdfs:subClassOf code:SpatialConstraint ;
+    rdfs:comment "Allowed filesystem paths/directories (bounds destructive + sensitive-file ops)." ;
+    code:groundsGTStep "C-05,C-06" .
+code:NetworkScope a owl:Class ; rdfs:subClassOf code:SpatialConstraint ;
+    rdfs:comment "Allowed hosts/ports (AgentSpec request_untrusted_source whitelist)." ;
+    code:groundsGTStep "C-07" .
+code:SandboxBoundary a owl:Class ; rdfs:subClassOf code:SpatialConstraint ;
+    rdfs:comment "The isolation boundary the operation may not cross." ; code:groundsGTStep "C-02" .
+
+# T -- Temporal: timeout / duration / rate
+code:TemporalConstraint a owl:Class ; rdfs:subClassOf code:Constraint ;
+    rdfs:comment "T: when / how long / how often the operation may run." .
+code:ExecutionTimeout a owl:Class ; rdfs:subClassOf code:TemporalConstraint ;
+    rdfs:comment "Max execution duration before the operation is halted." ; code:groundsGTStep "C-04" .
+code:RateLimit a owl:Class ; rdfs:subClassOf code:TemporalConstraint ;
+    rdfs:comment "Max frequency of an operation (e.g., network calls per interval)." .
+
+#################################################################
+#  HARDCODED FACTS  (analog of Seg1SpeedLimit / DefaultHeadway)
+#################################################################
+
+code:DefaultSandbox a code:Sandbox ;
+    rdfs:comment "Docker-style isolation is the default execution context." ; code:origin "hardcoded" .
+code:DestructiveCommandSet a code:Whitelist ;
+    rdfs:comment "Hardcoded set of destructive commands (e.g. rm -rf, overwrite of system paths)." ;
+    code:origin "hardcoded" .
+
+#################################################################
+#  REQUIRED STEPS  (bootstraps the LLM tends to drop -- analog of
+#  RoutePlanning/Localization in AV). Predicted blind spots.
+#################################################################
+
+code:RequiredStep a owl:Class ;
+    rdfs:comment "A step that must be present by construction; an unaided LLM tends to omit it." .
+code:EstablishSandbox a code:RequiredStep ;
+    code:groundsGTStep "C-02" ; code:origin "hardcoded" ;
+    rdfs:comment "Predicted LLM blind spot (code analog of localization)." .
+code:ResolveResources a code:RequiredStep ;
+    code:groundsGTStep "C-03" ;
+    rdfs:comment "Predicted LLM blind spot (code analog of route planning)." .
+
+#################################################################
+#  HARDCODED RULES  (SWRL-style; documented as rule individuals to keep
+#  the file valid Turtle. Parallel to the AV red->Stop / collision->EBrake
+#  / safety-first-veto rules.)
+#################################################################
+
+code:HardcodedRule a owl:Class .
+
+code:RuleBlockDestructive a code:HardcodedRule ;
+    code:origin "hardcoded" ; code:groundsGTStep "C-05,C-12" ;
+    rdfs:comment "IF Operation targets a destructive command on a protected File THEN EnforcementAction = Block. (AgentSpec is_destructive_cmd -> stop)." .
+
+code:RuleInspectUntrusted a code:HardcodedRule ;
+    code:origin "hardcoded" ; code:groundsGTStep "C-07,C-13" ;
+    rdfs:comment "IF Operation contacts an untrusted source AND writes to I/O THEN EnforcementAction = RequireConfirmation. (AgentSpec request_untrusted_source + write_to_io -> user_inspection)." .
+
+code:RuleSafetyFirst a code:HardcodedRule ;
+    code:origin "hardcoded" ; code:groundsGTStep "C-15" ;
+    rdfs:comment "IF an Operation improves task completion AND raises a safety Weakness THEN veto (safety outranks completion). Parallel to AV GT-16 arbitration." .

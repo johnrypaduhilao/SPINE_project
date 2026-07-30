@@ -1,0 +1,116 @@
+# Intent Decomposition: Speed Cap in Adverse Weather
+
+## Core Intent Analysis
+
+The operator wants a **safety-driven speed restriction** triggered by specific environmental visibility/traction hazards (fog, rain). The system must reliably detect these conditions and enforce a hard speed ceiling.
+
+---
+
+## Policies
+
+### Policy 1: Continuous Weather Condition Detection
+**What it does:**
+Continuously monitors available sensor inputs — cameras, LiDAR, radar, windshield wiper state, precipitation sensors, external weather data feeds, and visibility estimation algorithms — to detect the presence of fog or rain in real time.
+
+**Why it follows from the intent:**
+The speed cap is *conditional*. It only applies when fog or rain is present. Without reliable, ongoing detection, the system cannot know when to activate or deactivate the restriction. Detection is the prerequisite for everything else.
+
+**Design notes:**
+- Use sensor fusion across multiple modalities to reduce false negatives (missed detections are safety-critical)
+- Treat ambiguous readings conservatively — if confidence is below threshold, assume the condition *is* present
+
+---
+
+### Policy 2: Hard Speed Cap Enforcement at 30 km/h
+**What it does:**
+When fog or rain is detected, the vehicle's maximum permitted speed is set to 30 km/h. The throttle and acceleration control systems are constrained so the vehicle cannot exceed this limit regardless of other inputs, including navigation system suggestions or driver override attempts.
+
+**Why it follows from the intent:**
+The word "cap" implies a hard ceiling, not a soft recommendation. The intent is to guarantee the vehicle does not exceed 30 km/h under these conditions — not merely to suggest it.
+
+**Design notes:**
+- This is a *ceiling*, not a target — the vehicle should still slow further if other hazards (obstacles, curves, pedestrians) require it
+- The cap must override route-planning speed profiles that were calculated under clear-weather assumptions
+
+---
+
+### Policy 3: Smooth Speed Reduction Upon Condition Onset
+**What it does:**
+When fog or rain is first detected and the vehicle is traveling above 30 km/h, the system decelerates smoothly and progressively to reach 30 km/h, rather than braking abruptly.
+
+**Why it follows from the intent:**
+The intent is to improve safety. Sudden hard braking in fog or rain can itself cause accidents (loss of traction, rear-end collisions). The intent is best served by a controlled, safe transition to the restricted speed.
+
+**Design notes:**
+- Deceleration rate should be calibrated to be firm but not jarring (e.g., ≤ 0.3g unless an emergency hazard requires more)
+- Notify passengers/operator of the speed change and reason
+
+---
+
+### Policy 4: Speed Cap Removal Only Upon Confirmed Condition Clearance
+**What it does:**
+The 30 km/h cap is lifted only when sensors confirm that fog and rain have both cleared, and this confirmation is sustained for a defined minimum duration (e.g., 30 seconds of clean readings) before the restriction is removed.
+
+**Why it follows from the intent:**
+The intent ties the restriction to the *presence* of the condition. Removing the cap prematurely — on a single clean sensor reading during intermittent fog or light rain — would violate the spirit of the policy. A hysteresis window prevents unsafe oscillation.
+
+**Design notes:**
+- Clearing threshold should be stricter than detection threshold (asymmetric hysteresis)
+- Log the transition event for auditability
+
+---
+
+### Policy 5: Sensor Degradation Fallback
+**What it does:**
+If the weather-detection sensors are unavailable, degraded, or reporting conflicting data beyond a confidence threshold, the system defaults to *applying* the 30 km/h cap until reliable sensor function is restored.
+
+**Why it follows from the intent:**
+The intent is to protect against fog and rain. If the system cannot determine whether those conditions exist, it cannot guarantee the intent is satisfied. Failing safe (applying the restriction) is consistent with the operator's evident safety priority.
+
+**Design notes:**
+- Alert the operator/fleet manager of sensor degradation
+- Log the reason the cap was applied (condition detected vs. sensor fallback)
+
+---
+
+### Policy 6: Operator and Passenger Transparency
+**What it does:**
+When the speed cap is active, the system clearly communicates to the operator (and optionally passengers) that a weather-based speed restriction is in effect, the reason for it, and the current detected condition.
+
+**Why it follows from the intent:**
+The operator set this intent deliberately. They should be able to verify it is functioning correctly. Transparency also prevents confusion about why the vehicle is not accelerating, and supports trust and auditability.
+
+**Design notes:**
+- Dashboard/HMI indicator showing active restriction
+- Logged records of when the cap was active, for how long, and under what detected conditions
+
+---
+
+## Policy Interaction Summary
+
+```
+Weather Detected? ──Yes──► Cap Active at 30 km/h ──► Smooth deceleration if needed
+       │                          │
+       No                   Sensors failed?
+       │                          │
+       ▼                    Yes ──► Apply cap (fail-safe)
+Cap Inactive                       │
+(normal speed)               No ──► Normal operation
+       ▲
+       │
+Condition cleared + sustained confirmation window
+```
+
+---
+
+## What These Policies Do NOT Do (Explicit Boundaries)
+
+| Out of Scope | Reason |
+|---|---|
+| Reducing speed below 30 km/h for fog/rain alone | Intent sets a cap, not a floor; other policies handle obstacle/hazard braking |
+| Applying the cap for other weather (snow, ice) | Intent specifies only fog and rain; extending it requires a new operator intent |
+| Allowing operator to override the cap in real time | Intent uses "cap" language implying a firm constraint; override policy requires separate operator authorization |
+
+---
+
+These six policies together are **necessary and sufficient** to faithfully implement the stated intent with safety, reliability, and auditability.

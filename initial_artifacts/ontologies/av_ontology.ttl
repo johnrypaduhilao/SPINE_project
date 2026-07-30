@@ -1,0 +1,143 @@
+@prefix av:      <https://example.org/intent-assurance/av#> .
+@prefix map:     <http://www.toyota-ti.ac.jp/Lab/Denshi/COIN/Map#> .
+@prefix Control: <http://www.toyota-ti.ac.jp/Lab/Denshi/COIN/Control#> .
+@prefix car:     <http://www.toyota-ti.ac.jp/Lab/Denshi/COIN/Car#> .
+@prefix sensor:  <http://www.toyota-ti.ac.jp/Lab/Denshi/COIN/sensor#> .
+@prefix owl:     <http://www.w3.org/2002/07/owl#> .
+@prefix rdf:     <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs:    <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd:     <http://www.w3.org/2001/XMLSchema#> .
+
+av: a owl:Ontology ;
+    rdfs:comment "Minimum-viable AV ontology for the decelerate/Law46 intent: keep speed within the safe limit for conditions (cap 30 km/h in fog or rain). Grounded in Zhao et al. (TTI Map/Control/Car/sensor). Vehicle, Trajectory, SpeedProfile, GPS and the deceleration sub-variants live in the TTI sensor namespace, not car." .
+
+av:origin    a owl:AnnotationProperty ; rdfs:comment "hardcoded | generated | split" .
+av:grounding a owl:AnnotationProperty ; rdfs:comment "reused (aligned to Zhao) | extension (ours)" .
+
+# 1. DOMAIN ontology (the nouns) -- reused from TTI Map and Car.
+
+av:Vehicle      a owl:Class ; av:grounding "reused" ; rdfs:seeAlso sensor:Vehicle ;
+    rdfs:comment "umbrella over the ego and other vehicles; Zhao's general Vehicle is in the sensor namespace." .
+av:EgoVehicle   a owl:Class ; rdfs:subClassOf av:Vehicle ; owl:equivalentClass car:MyCar ; av:grounding "reused" ;
+    rdfs:comment "Zhao's ego vehicle is car:MyCar." .
+av:OtherVehicle a owl:Class ; rdfs:subClassOf av:Vehicle ; rdfs:seeAlso car:RegularVehicle ; av:grounding "reused" .
+av:Road         a owl:Class ; owl:equivalentClass map:RoadPart ;    av:grounding "reused" ;
+    rdfs:comment "Zhao's road class is RoadPart (there is no map:Road)." .
+av:RoadSegment  a owl:Class ; owl:equivalentClass map:RoadSegment ; av:grounding "reused" .
+av:Lane         a owl:Class ; owl:equivalentClass map:Lane ;        av:grounding "reused" .
+av:Intersection a owl:Class ; owl:equivalentClass map:Intersection ; av:grounding "reused" .
+av:TrafficLight a owl:Class ; owl:equivalentClass map:TrafficSignal ; av:grounding "reused" ;
+    rdfs:comment "Zhao name it TrafficSignal, not TrafficLight." .
+av:PathSegment  a owl:Class ; owl:equivalentClass Control:PathSegment ; av:grounding "reused" .
+
+# 2. ACTION ontology (the verbs) -- reused from TTI Control DrivingAction subtree.
+#    Brake / Accelerate / Decelerate / AdjustSpeed are OUR extensions: Zhao models
+#    deceleration as a car-motion descriptor (car:Deceleration, sensor:SmoothDeceleration),
+#    not as a DrivingAction.
+
+av:Action      a owl:Class ; owl:equivalentClass Control:DrivingAction ; av:grounding "reused" .
+av:Stop        a owl:Class ; rdfs:subClassOf av:Action ; owl:equivalentClass Control:Stop ;       av:grounding "reused" .
+av:ChangeLane  a owl:Class ; rdfs:subClassOf av:Action ; owl:equivalentClass Control:LaneChange ; av:grounding "reused" .
+av:Steer       a owl:Class ; rdfs:subClassOf av:Action ; av:grounding "reused" ;
+    rdfs:seeAlso Control:TurnLeft , Control:TurnRight ;
+    rdfs:comment "generalizes Zhao's TurnLeft/TurnRight." .
+av:Yield       a owl:Class ; rdfs:subClassOf av:Action ; av:grounding "reused" ; rdfs:seeAlso Control:WaitThenGo .
+av:Brake       a owl:Class ; rdfs:subClassOf av:Action ; av:grounding "extension" ; rdfs:seeAlso car:Deceleration ;
+    rdfs:comment "no Brake DrivingAction in Zhao; deceleration is a car-motion descriptor." .
+av:Accelerate  a owl:Class ; rdfs:subClassOf av:Action ; av:grounding "extension" ; rdfs:seeAlso car:Acceleration .
+av:Decelerate  a owl:Class ; rdfs:subClassOf av:Action ; av:grounding "extension" ;
+    rdfs:seeAlso car:Deceleration , sensor:SmoothDeceleration ;
+    rdfs:comment "GT-06 headline leaf: smooth deceleration to the cap (sensor:SmoothDeceleration, not sensor:SuddenDeceleration)." .
+av:AdjustSpeed a owl:Class ; rdfs:subClassOf av:Action ; av:grounding "extension" ; rdfs:seeAlso sensor:SpeedProfile .
+
+# 3. CONTEXT ontology (the conditions) -- OUR addition (no Context ontology in Zhao).
+
+av:Context       a owl:Class ; av:grounding "extension" .
+av:Weather       a owl:Class ; rdfs:subClassOf av:Context ; av:grounding "extension" .
+av:Clear         a owl:Class ; rdfs:subClassOf av:Weather .
+av:Rain          a owl:Class ; rdfs:subClassOf av:Weather ;
+    rdfs:comment "GT-01 trigger (with Fog): the adverse condition that activates Law46." .
+av:Snow          a owl:Class ; rdfs:subClassOf av:Weather .
+av:Fog           a owl:Class ; rdfs:subClassOf av:Weather ;
+    rdfs:comment "GT-01 trigger (with Rain): the adverse condition that activates Law46." .
+av:RoadType      a owl:Class ; rdfs:subClassOf av:Context ; rdfs:seeAlso map:RoadType ; av:grounding "reused" .
+av:OperatingMode a owl:Class ; rdfs:subClassOf av:Context ; rdfs:comment "CT axis: autonomous operating mode." .
+
+# 4. CONSTRAINT ontology (the envelope) -- OUR addition; R/S/T made explicit, with
+#    "split" rows pinned to the Zhao concept where one exists.
+
+av:Constraint         a owl:Class ; av:grounding "extension" .
+av:ResourceConstraint a owl:Class ; rdfs:subClassOf av:Constraint .
+av:SpatialConstraint  a owl:Class ; rdfs:subClassOf av:Constraint .
+av:TemporalConstraint a owl:Class ; rdfs:subClassOf av:Constraint .
+
+# -- S axis (spatial) ------------------------------------------------------
+av:SpeedLimit  a owl:Class ; rdfs:subClassOf av:SpatialConstraint ;
+    av:origin "split" ; av:grounding "reused" ; rdfs:seeAlso Control:OverSpeedWarning ;
+    rdfs:comment "GT-02/03: hardcoded posted ceiling (read at runtime); effective cap is min(posted, weather). OverSpeedWarning is Zhao's matching enforcement signal." .
+av:LaneScope   a owl:Class ; rdfs:subClassOf av:SpatialConstraint ;
+    av:origin "hardcoded" ; av:grounding "extension" ;
+    rdfs:comment "GT-04 (S axis): the cap binds on every lane -- the cited LLM blind spot (fast-lane-only)." .
+av:MinHeadway  a owl:Class ; rdfs:subClassOf av:SpatialConstraint ;
+    av:origin "split" ; av:grounding "reused" ; rdfs:seeAlso Control:CurrentLaneSafeDist ;
+    rdfs:comment "safe following distance; reduced stopping capacity widens it. Zhao's CurrentLaneSafeDist." .
+
+# -- R axis (resource): stopping/braking capacity, degraded by adverse weather
+av:StoppingCapacity a owl:Class ; rdfs:subClassOf av:ResourceConstraint ;
+    av:grounding "extension" ;
+    rdfs:seeAlso car:Deceleration , sensor:SmoothDeceleration , Control:CurrentLaneSafeDist ;
+    rdfs:comment "R axis: available braking/traction capacity; the resource fog and rain degrade, and the reason the conditional cap exists." .
+
+# -- T axis (temporal): per control cycle while the adverse condition holds -
+av:AdverseWeatherWindow a owl:Class ; rdfs:subClassOf av:TemporalConstraint ;
+    av:origin "hardcoded" ; av:grounding "extension" ;
+    rdfs:comment "T axis: the cap is re-evaluated per control cycle for as long as fog/rain persists." .
+
+# Properties
+av:relatedTrafficLight    a owl:ObjectProperty ; rdfs:seeAlso map:relatedTrafficLight .
+av:onLane                 a owl:ObjectProperty ; rdfs:domain av:Vehicle ; rdfs:range av:Lane .
+av:appliesToSegment       a owl:ObjectProperty ; rdfs:range av:RoadSegment .
+av:appliesToAllLanes      a owl:DatatypeProperty ; rdfs:domain av:SpeedLimit ; rdfs:range xsd:boolean .
+av:maxSpeedKph            a owl:DatatypeProperty ; rdfs:domain av:SpeedLimit ; rdfs:range xsd:decimal .
+av:minHeadwayMeters       a owl:DatatypeProperty ; rdfs:domain av:MinHeadway ; rdfs:range xsd:decimal .
+av:stoppingDistanceMeters a owl:DatatypeProperty ; rdfs:domain av:StoppingCapacity ; rdfs:range xsd:decimal .
+
+# Hardcoded constraint FACTS (illustrative instances)
+av:Seg1PostedLimit a av:SpeedLimit ; av:maxSpeedKph 60.0 ; av:appliesToAllLanes true ; av:origin "hardcoded" ;
+    rdfs:comment "example posted limit for the segment." .
+av:AdverseWeatherCap a av:SpeedLimit ; av:maxSpeedKph 30.0 ; av:appliesToAllLanes true ; av:origin "hardcoded" ;
+    rdfs:seeAlso map:SpeedLimit30 ;
+    rdfs:comment "Law46 weather cap, aligned to Zhao's native SpeedLimit30." .
+av:DefaultHeadway a av:MinHeadway ; av:minHeadwayMeters 2.0 ; av:origin "hardcoded" .
+
+# 5. HARDCODED RULES (safety invariants -- fully hardcoded policies).
+#    Readable SWRL (antecedent -> consequent); stored as rule axioms, never LLM-generated.
+#    Zhao et al. encode their right-of-way rules the same way (SWRL).
+
+# R rule -- adverse weather degrades stopping capacity, which forces the cap:
+#   Weather(?w) ^ (Fog(?w) v Rain(?w)) ^ EgoVehicle(?v)  ->  reducedStoppingCapacity(?v)
+#   reducedStoppingCapacity(?v)                          ->  appliesCap(?v, AdverseWeatherCap)   [Law46]
+
+# GT-03 -- effective cap is the tighter of posted and weather:
+#   PostedLimit(?p) ^ AdverseWeatherCap(?c)              ->  effectiveCap(min(?p, ?c))
+
+# GT-04 -- the cap binds on every lane, not just the fast lane:
+#   SpeedLimit(?s) ^ effectiveCap(?s)                    ->  appliesToAllLanes(?s, true)
+
+# GT-05 -- block acceleration above the effective cap:
+#   EgoVehicle(?v) ^ plannedSpeed(?v,?x) ^ effectiveCap(?c) ^ (?x > ?c)  ->  block(Accelerate)
+
+# 6. STRUCTURAL SKELETON (hardcoded shape of any valid policy tree).
+
+av:RequiredStep a owl:Class ; rdfs:comment "a step that must exist in a valid Law46 tree." .
+av:DetectWeather a av:RequiredStep ; av:origin "hardcoded" ; av:grounding "extension" ;
+    rdfs:comment "GT-01 bootstrap: a tree that never detects fog/rain never activates the cap." .
+av:Localization  a av:RequiredStep ; av:origin "hardcoded" ; av:grounding "reused" ;
+    rdfs:seeAlso sensor:GPS , sensor:GPSTrack ;
+    rdfs:comment "GT-02 bootstrap: segment/lane position established via Zhao's GPS/GPSTrack (sensor namespace), to read the posted limit." .
+av:AllLaneScope  a av:RequiredStep ; av:origin "hardcoded" ; av:grounding "extension" ;
+    rdfs:comment "GT-04 bootstrap: a tree that caps only one lane fails the structural check (the cited LLM blind spot)." .
+
+# Level-ordering invariant (hardcoded; checked structurally):
+#   every refinement edge must go  declarative -> definitive -> imperative  (never backward),
+#   so that every imperative action traces up to a declarative intent (chain of causality).

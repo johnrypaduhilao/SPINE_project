@@ -1,0 +1,215 @@
+{
+  "intent": "Keep the vehicle's speed within the safe limit for the current conditions",
+  "policies": [
+    {
+      "id": "P0",
+      "parent_id": null,
+      "level": "declarative",
+      "definer": "vehicle owner/operator",
+      "enforcer": "orchestrator",
+      "action": "maintain the ego vehicle's speed within the safe limit for the current driving conditions",
+      "constraints": {
+        "resource": "vehicle speed (km/h or m/s)",
+        "spatial": "current road segment / lane",
+        "temporal": "trip in progress"
+      },
+      "context": "autonomous driving mode engaged",
+      "rationale": "This root policy restates the intent as a high-level safety goal the system must achieve while driving autonomously."
+    },
+    {
+      "id": "P1",
+      "parent_id": "P0",
+      "level": "definitive",
+      "definer": "vehicle manufacturer",
+      "enforcer": "monitor",
+      "action": "continuously monitor the ego vehicle's instantaneous speed, wheel speeds, and drivetrain telemetry",
+      "constraints": {
+        "resource": "vehicle speed sensors; wheel speed; odometry",
+        "spatial": "vehicle chassis / all wheels",
+        "temporal": "continuous"
+      },
+      "context": "autonomous driving mode engaged; trip in progress",
+      "rationale": "To control speed we must continuously observe the vehicle's actual speed and related telemetry."
+    },
+    {
+      "id": "P2",
+      "parent_id": "P0",
+      "level": "definitive",
+      "definer": "vehicle manufacturer",
+      "enforcer": "monitor",
+      "action": "continuously monitor external conditions relevant to safe speed including posted speed limits, road geometry (curvature, grade), surface friction, weather, visibility, traffic density, and detected obstacles",
+      "constraints": {
+        "resource": "camera/LiDAR/radar sensors; map and signage recognition; weather and friction estimates",
+        "spatial": "current lane; adjacent lanes; upcoming road segment",
+        "temporal": "continuous; update on sensor refresh rate"
+      },
+      "context": "autonomous driving mode engaged; trip in progress",
+      "rationale": "Safe speed depends on both static legal limits and dynamic environmental factors, so the system must observe those factors in real time."
+    },
+    {
+      "id": "P3",
+      "parent_id": "P2",
+      "level": "definitive",
+      "definer": "vehicle manufacturer",
+      "enforcer": "analyze",
+      "action": "compute a dynamic safe_speed value by combining the legal posted speed limit with adjustments for road curvature, grade, surface friction, visibility, precipitation, traffic density, and obstacle proximity",
+      "constraints": {
+        "resource": "computed safe_speed metric (km/h or m/s)",
+        "spatial": "current and imminent road segments",
+        "temporal": "real-time (milliseconds to seconds)"
+      },
+      "context": "autonomous driving mode engaged; sensors nominal",
+      "rationale": "An explicit computed safe_speed is required to compare against current speed and to plan control actions."
+    },
+    {
+      "id": "P4",
+      "parent_id": "P3",
+      "level": "definitive",
+      "definer": "vehicle operator",
+      "enforcer": "plan",
+      "action": "select a target_speed and a control strategy (throttle, regenerative braking, friction braking, lane change, or cooperative adaptive cruise) that will achieve the computed safe_speed while maintaining comfort and required following distance",
+      "constraints": {
+        "resource": "target_speed; control strategy parameters",
+        "spatial": "current lane and reachable adjacent lanes",
+        "temporal": "planning horizon (e.g., next 3–10 seconds)"
+      },
+      "context": "autonomous driving mode engaged; computed safe_speed available",
+      "rationale": "A concrete plan (target speed and control method) is needed to translate the safe_speed estimate into actuator commands."
+    },
+    {
+      "id": "P5",
+      "parent_id": "P4",
+      "level": "imperative",
+      "definer": "traffic safety regulator",
+      "enforcer": "execute",
+      "action": "IF current_speed > posted_legal_speed THEN reduce throttle and apply braking as needed to achieve posted_legal_speed within safe deceleration limits",
+      "constraints": {
+        "resource": "vehicle speed (state); braking capability (m/s^2)",
+        "spatial": "road segment with posted speed limit",
+        "temporal": "achieve within safe deceleration time (seconds) while maintaining stability"
+      },
+      "context": "autonomous driving mode engaged; posted speed limit available",
+      "rationale": "Legal speed limits are an upper bound and must be enforced by reducing speed when exceeded."
+    },
+    {
+      "id": "P6",
+      "parent_id": "P4",
+      "level": "imperative",
+      "definer": "vehicle safety system",
+      "enforcer": "execute",
+      "action": "IF computed_safe_speed < posted_legal_speed AND current_speed > computed_safe_speed THEN reduce speed to computed_safe_speed using the planned control strategy while respecting vehicle dynamics",
+      "constraints": {
+        "resource": "vehicle speed; braking/traction limits",
+        "spatial": "current road segment and immediate upcoming segment",
+        "temporal": "achieve within safe deceleration window (seconds)"
+      },
+      "context": "autonomous driving mode engaged; adverse or constraining conditions detected",
+      "rationale": "When dynamic conditions make a lower speed safer than the legal limit, the vehicle must slow to that dynamic safe speed."
+    },
+    {
+      "id": "P7",
+      "parent_id": "P4",
+      "level": "imperative",
+      "definer": "vehicle safety system",
+      "enforcer": "execute",
+      "action": "IF an imminent collision is detected (time-to-collision below threshold) THEN apply maximum safe braking and, if available and safe, perform an evasive maneuver to avoid or mitigate impact",
+      "constraints": {
+        "resource": "braking system; steering actuators; available friction",
+        "spatial": "current lane and adjacent lanes within maneuverable range",
+        "temporal": "immediate; emergency response"
+      },
+      "context": "autonomous driving mode engaged; obstacle detected with critical TTC",
+      "rationale": "In emergencies the system must prioritize collision avoidance by rapid deceleration and evasive action."
+    },
+    {
+      "id": "P8",
+      "parent_id": "P4",
+      "level": "imperative",
+      "definer": "vehicle manufacturer",
+      "enforcer": "execute",
+      "action": "IF frequent speed oscillations or excessive jerk are detected THEN apply acceleration/jerk limits to smooth speed changes while still meeting the computed safe_speed",
+      "constraints": {
+        "resource": "acceleration and jerk limits (m/s^2, m/s^3)",
+        "spatial": "vehicle longitudinal axis",
+        "temporal": "continuous smoothing during oscillatory conditions"
+      },
+      "context": "autonomous driving mode engaged; passenger comfort and actuator limits considered",
+      "rationale": "Smoothing prevents unsafe or uncomfortable rapid speed changes while maintaining safety constraints."
+    },
+    {
+      "id": "P9",
+      "parent_id": "P4",
+      "level": "imperative",
+      "definer": "local traffic authority",
+      "enforcer": "execute",
+      "action": "IF the vehicle is inside a geofenced school zone or active construction zone during restricted hours THEN cap target_speed to the posted reduced limit and enforce it",
+      "constraints": {
+        "resource": "vehicle speed",
+        "spatial": "geofenced school/construction zone",
+        "temporal": "zone active hours (e.g., school hours; posted times)"
+      },
+      "context": "autonomous driving mode engaged; geofence and active schedule available",
+      "rationale": "Special zones impose lower speed caps that must be enforced when active to protect vulnerable road users."
+    },
+    {
+      "id": "P10",
+      "parent_id": "P0",
+      "level": "definitive",
+      "definer": "fleet operator / vehicle operator",
+      "enforcer": "monitor",
+      "action": "monitor and log adherence to target_speed and record deviations, interventions, and the sensor/decision data that led to speed changes",
+      "constraints": {
+        "resource": "event logs; telemetry storage",
+        "spatial": "vehicle trip context",
+        "temporal": "continuous logging during trip"
+      },
+      "context": "autonomous driving mode engaged; trip in progress",
+      "rationale": "Logging compliance and deviations supports auditing, debugging, and safety analysis."
+    },
+    {
+      "id": "P11",
+      "parent_id": "P10",
+      "level": "definitive",
+      "definer": "vehicle operator",
+      "enforcer": "analyze",
+      "action": "analyze logs and current telemetry for repeated inability to maintain safe_speed, repeated actuator failures, or sensor degradation and determine if human takeover or degraded mode is required",
+      "constraints": {
+        "resource": "event counts; fault indicators",
+        "spatial": "vehicle operational domain",
+        "temporal": "analysis window (e.g., last N seconds/minutes)"
+      },
+      "context": "autonomous driving mode engaged; anomalies or repeated deviations detected",
+      "rationale": "If the system repeatedly fails to maintain safe speed or sensors fail, the system must detect that and decide on escalation."
+    },
+    {
+      "id": "P12",
+      "parent_id": "P11",
+      "level": "definitive",
+      "definer": "vehicle operator",
+      "enforcer": "plan",
+      "action": "select a fallback plan when takeover or system degradation is required, choosing between reduced-speed safe-stop, pull-over to a safe location, or handing control to a remote operator/human driver",
+      "constraints": {
+        "resource": "fallback options; safe-stop locations",
+        "spatial": "nearest safe pull-over area or shoulder",
+        "temporal": "execute as soon as safely possible"
+      },
+      "context": "autonomous driving mode engaged; takeover requested or critical failure detected",
+      "rationale": "A concrete fallback plan is necessary to safely reduce speed and remove the vehicle from traffic when autonomy is compromised."
+    },
+    {
+      "id": "P13",
+      "parent_id": "P12",
+      "level": "imperative",
+      "definer": "vehicle operator",
+      "enforcer": "execute",
+      "action": "IF takeover requested OR critical system failure confirmed THEN reduce speed to minimal safe_speed, activate hazard signals, and navigate to the nearest safe pull-over area or stop point",
+      "constraints": {
+        "resource": "vehicle speed; hazard lights; navigation to safe stop",
+        "spatial": "safe pull-over area, shoulder, or designated stop zone",
+        "temporal": "immediate execution until stopped"
+      },
+      "context": "autonomous driving mode engaged; critical failure or takeover requested",
+      "rationale": "When autonomy is compromised the vehicle must promptly reduce speed and reach a safe stopped state to protect occupants and other road users."
+    }
+  ]
+}

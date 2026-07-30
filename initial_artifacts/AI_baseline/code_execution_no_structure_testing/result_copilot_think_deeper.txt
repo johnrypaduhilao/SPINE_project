@@ -1,0 +1,28 @@
+### Policies to enforce for protecting `/srv/app/config`
+
+| **Policy** | **What it does** | **Why it follows from the intent** |
+|---|---:|---|
+| **Least Privilege Access Control** | Grants read/write/execute only to specific service accounts and administrators; denies all others. | Restricting who can access the config directory directly reduces risk of accidental or malicious exposure. |
+| **Strong File System Permissions** | Sets ownership and POSIX/ACL permissions so only required users and processes can read or modify files. | Files under `/srv/app/config` often contain secrets and must be inaccessible to general users. |
+| **Secrets Encryption at Rest** | Encrypts configuration files or secrets using a key management system (KMS). | Even if files are read, encryption prevents plaintext disclosure, satisfying protection intent. |
+| **Secrets Encryption in Transit** | Ensures any transfer of config data uses TLS or equivalent encrypted channels. | Protects config when moved between services, backups, or deployments. |
+| **Centralized Secrets Management** | Move secrets into a vault (e.g., KMS/secret store) and reference them from config rather than storing plaintext. | Reduces the number of sensitive files and centralizes access control and rotation. |
+| **Access Logging and Auditing** | Logs all access attempts, reads, writes, and permission changes to `/srv/app/config` with immutable storage. | Enables detection and forensic analysis of unauthorized or suspicious access. |
+| **Integrity Monitoring** | Monitors file hashes and alerts on unexpected changes to files in the directory. | Detects tampering or unauthorized modifications to critical configuration. |
+| **Network Segmentation and Firewalling** | Restricts which hosts and services can reach the application and any management interfaces. | Limits remote attack surface that could be used to access or exfiltrate config files. |
+| **Process Isolation and Runtime Controls** | Run the application with minimal privileges in containers or sandboxes; prevent arbitrary code from accessing host filesystem. | Prevents compromised processes from reading host config files beyond their scope. |
+| **Automated Patch Management** | Keep OS, runtime, and dependencies patched; enforce security updates for services that can access the config. | Reduces exploitation risk that could lead to unauthorized access to the directory. |
+| **Secure Backup and Retention Policy** | Backups of `/srv/app/config` are encrypted, access-controlled, and retained according to policy; test restores regularly. | Ensures recoverability without creating additional unprotected copies of sensitive data. |
+| **Secrets Rotation and Expiration** | Enforce periodic rotation of keys, passwords, and tokens referenced by config; revoke compromised credentials immediately. | Limits the window of exposure if a secret is leaked, aligning with protection goals. |
+| **Secure Deletion and Sanitization** | When removing or replacing config files, securely wipe or overwrite storage and purge from backups where feasible. | Prevents sensitive data from lingering on disk or in backups after it should be gone. |
+| **Role Based Administrative Controls** | Require multi-person approval for high-risk changes to config and use privileged access workflows (e.g., just-in-time elevation). | Reduces risk of unilateral destructive or exfiltration actions against sensitive files. |
+| **Monitoring and Alerting with Incident Response** | Define alerts for anomalous access patterns and a runbook for containment, investigation, and remediation. | Ensures timely detection and structured response to incidents affecting the config directory. |
+
+---
+
+### Implementation notes and priorities
+- **Immediate actions**: enforce file permissions, enable access logging, and move secrets into a centralized vault.  
+- **High priority**: enable encryption at rest and in transit, set up integrity monitoring, and implement least privilege for service accounts.  
+- **Ongoing controls**: patch management, rotation schedules, secure backups, and incident response exercises.  
+
+These policies directly implement the operator’s intent by preventing unauthorized access, minimizing exposure of sensitive data, ensuring detection of misuse, and enabling recovery and remediation if protection fails.

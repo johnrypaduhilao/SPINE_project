@@ -1,0 +1,155 @@
+@prefix embodied: <http://provenance.example/onto/embodied#> .
+@prefix cora: <http://purl.org/ieee1872-owl/cora-bare#> .
+@prefix dul:  <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#> .
+@prefix soma: <http://www.ease-crc.org/ont/SOMA.owl#> .
+@prefix owl:  <http://www.w3.org/2002/07/owl#> .
+@prefix rdf:  <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd:  <http://www.w3.org/2001/XMLSchema#> .
+
+#################################################################
+#  PROVENANCE — Embodied Agent domain ontology
+#
+#  Reuse spine (parallel to Zhao=AV, UCO=code):
+#    - CORA (IEEE 1872-2015 Core Ontology for Robotics & Automation) -- VERIFIED
+#      IRIs reused below (http://purl.org/ieee1872-owl/cora-bare#).
+#    - DOLCE+DnS Ultralite (DUL), the foundational layer SOMA builds on -- VERIFIED
+#      IRIs reused below (http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#).
+#    - SOMA (KnowRob/CRC-EASE) -- affordance/disposition model; referenced for the
+#      affordance-grounding step (exact module IRI to confirm against live SOMA dist).
+#    - SafeAgentBench (Yin et al., 2024) -- hazard taxonomy, annotated per risk class.
+#    - AI2-THOR / SafeAgentEnv 17-action controller -- concrete action vocabulary.
+#
+#  Spatial note: unlike code (where Spatial was a path/namespace analog), the embodied
+#  Spatial axis is LITERAL physical space (reach, proximity, workspace).
+#
+#  Level-ordering invariant (shared): declarative -> definitive -> imperative.
+#################################################################
+
+embodied: a owl:Ontology ;
+    rdfs:comment "Embodied-agent KB for PROVENANCE. Reuses CORA/DUL; extends for the agent-execution (MAPE) layer and SafeAgentBench hazards. Grounds answer_sheet_embodied.md." .
+
+embodied:abstractionLevel a owl:DatatypeProperty .
+embodied:origin a owl:DatatypeProperty ; rdfs:comment "hardcoded | generated | split." .
+embodied:groundsGTStep a owl:AnnotationProperty .
+embodied:sabRef a owl:AnnotationProperty ; rdfs:comment "SafeAgentBench harm section (human-harm | property)." .
+
+#################################################################
+#  DOMAIN (D) -- agent, environment, objects (reused from CORA / DUL)
+#################################################################
+
+embodied:Robot a owl:Class ; owl:equivalentClass cora:Robot ;
+    rdfs:comment "The embodied agent." .
+embodied:Environment a owl:Class ; owl:equivalentClass cora:RoboticEnvironment ;
+    rdfs:comment "The scene the agent perceives and acts in." ; embodied:groundsGTStep "E-02" .
+embodied:Object a owl:Class ; owl:equivalentClass dul:PhysicalArtifact ;
+    rdfs:comment "A physical object the action touches." ; embodied:groundsGTStep "E-03" .
+embodied:Appliance a owl:Class ; rdfs:subClassOf embodied:Object ;
+    owl:equivalentClass dul:DesignedArtifact ;
+    rdfs:comment "Stove/microwave/etc. (AI2-THOR object types)." .
+embodied:TaskPlan a owl:Class ; owl:equivalentClass dul:Description ;
+    rdfs:comment "The instruction parsed into a plan." ; embodied:groundsGTStep "E-01" .
+embodied:Goal a owl:Class ; owl:equivalentClass dul:Goal ;
+    rdfs:comment "The desired end state of the task." ; embodied:groundsGTStep "E-16" .
+
+#################################################################
+#  PERCEPTION + AFFORDANCE  (the cited foundational stages; NOT a coinage)
+#################################################################
+
+embodied:PerceptionStage a owl:Class ;
+    rdfs:comment "Perceive and model the scene. Standard first stage of the embodied pipeline (Liu et al. arXiv:2407.06886; world-model survey arXiv:2510.16732)." ;
+    embodied:groundsGTStep "E-02" .
+embodied:AffordanceGrounding a owl:Class ;
+    rdfs:seeAlso soma:Affordance ;
+    rdfs:comment "Resolve target object state -> affordances before acting (Gibson 1979; manipulation survey arXiv:2408.11537; SOMA soma:Affordance)." ;
+    embodied:groundsGTStep "E-03" .
+embodied:ObjectState a owl:Class ;
+    rdfs:comment "Context state that fixes affordance and hazard: on/off, hot/cold, sharp, full (CT)." ;
+    embodied:groundsGTStep "E-03,E-10" .
+
+#################################################################
+#  ACTION (A) -- physical actions (dul:Action) + enforcement (AgentSpec)
+#################################################################
+
+embodied:Action a owl:Class ; owl:equivalentClass dul:Action ;
+    rdfs:comment "A physical action; AI2-THOR/SafeAgentEnv 17-action controller." ; embodied:groundsGTStep "E-14" .
+embodied:Navigate a owl:Class ; rdfs:subClassOf embodied:Action .
+embodied:PickUp a owl:Class ; rdfs:subClassOf embodied:Action .
+embodied:Put a owl:Class ; rdfs:subClassOf embodied:Action .
+embodied:ToggleOn a owl:Class ; rdfs:subClassOf embodied:Action .
+embodied:ToggleOff a owl:Class ; rdfs:subClassOf embodied:Action .
+embodied:Slice a owl:Class ; rdfs:subClassOf embodied:Action .
+
+embodied:PreActionCheckpoint a owl:Class ;
+    rdfs:comment "Intercept an action before execution (AgentSpec before-action)." ; embodied:groundsGTStep "E-04" .
+embodied:DecideEnforcement a owl:Class ;
+    rdfs:comment "Choose: proceed / modify / refuse / ask human (AgentSpec enforce)." ; embodied:groundsGTStep "E-11" .
+embodied:RefuseAction a owl:Class ; rdfs:subClassOf embodied:Action ;
+    rdfs:comment "Block the hazardous action (AgentSpec stop)." ; embodied:groundsGTStep "E-12" ; embodied:origin "hardcoded" .
+embodied:InsertSafePrecondition a owl:Class ; rdfs:subClassOf embodied:Action ;
+    rdfs:comment "Insert a safe step first (e.g., turn off burner before wiping)." ; embodied:groundsGTStep "E-12" .
+embodied:RequestConfirmation a owl:Class ; rdfs:subClassOf embodied:Action ;
+    rdfs:comment "Pause for human approval (AgentSpec user_inspection; AP flag)." ; embodied:groundsGTStep "E-13" .
+embodied:SafetyConditionCheck a owl:Class ;
+    rdfs:comment "Check the action against current-state pre/post-conditions (IS-Bench state triggers)." ; embodied:groundsGTStep "E-10" .
+embodied:VerifyGoal a owl:Class ;
+    rdfs:comment "Verify the goal state is achieved (SafeAgentBench completion check)." ; embodied:groundsGTStep "E-16" .
+
+#################################################################
+#  HAZARD (risk axis -- SafeAgentBench, 10 types in two harm sections)
+#################################################################
+
+embodied:Hazard a owl:Class ; rdfs:comment "A potential physical harm (SafeAgentBench)." .
+embodied:FireHazard a owl:Class ; rdfs:subClassOf embodied:Hazard ;
+    embodied:sabRef "human-harm" ; embodied:groundsGTStep "E-05" ; embodied:origin "hardcoded" .
+embodied:ElectricalHazard a owl:Class ; rdfs:subClassOf embodied:Hazard ;
+    embodied:sabRef "human-harm" ; embodied:groundsGTStep "E-06" .
+embodied:PoisoningHazard a owl:Class ; rdfs:subClassOf embodied:Hazard ;
+    embodied:sabRef "human-harm" ; embodied:groundsGTStep "E-07" .
+embodied:InjuryHazard a owl:Class ; rdfs:subClassOf embodied:Hazard ;
+    embodied:sabRef "human-harm" ; embodied:groundsGTStep "E-08" .
+embodied:PropertyDamageHazard a owl:Class ; rdfs:subClassOf embodied:Hazard ;
+    embodied:sabRef "property" ; embodied:groundsGTStep "E-09" .
+
+#################################################################
+#  CONSTRAINT  C(R, S, T) -- explicit; Spatial is LITERAL here
+#################################################################
+
+embodied:Constraint a owl:Class .
+
+# R -- Resource (robot energy / payload)
+embodied:ResourceConstraint a owl:Class ; rdfs:subClassOf embodied:Constraint .
+embodied:EnergyBudget a owl:Class ; rdfs:subClassOf embodied:ResourceConstraint .
+embodied:PayloadLimit a owl:Class ; rdfs:subClassOf embodied:ResourceConstraint .
+
+# S -- Spatial (literal physical space)
+embodied:SpatialConstraint a owl:Class ; rdfs:subClassOf embodied:Constraint ;
+    rdfs:comment "Literal physical space: reach, proximity, workspace." .
+embodied:ReachZone a owl:Class ; rdfs:subClassOf embodied:SpatialConstraint .
+embodied:Proximity a owl:Class ; rdfs:subClassOf embodied:SpatialConstraint ;
+    rdfs:comment "Min distance to people/hazards (falling/impact injury)." ; embodied:groundsGTStep "E-08" .
+embodied:Workspace a owl:Class ; rdfs:subClassOf embodied:SpatialConstraint .
+
+# T -- Temporal (timeout / ordering)
+embodied:TemporalConstraint a owl:Class ; rdfs:subClassOf embodied:Constraint .
+embodied:ActionTimeout a owl:Class ; rdfs:subClassOf embodied:TemporalConstraint .
+embodied:Sequencing a owl:Class ; rdfs:subClassOf embodied:TemporalConstraint ;
+    rdfs:comment "Required ordering (e.g., turn off burner BEFORE wiping)." ; embodied:groundsGTStep "E-10" .
+
+#################################################################
+#  HARDCODED RULES  (SWRL-style; rule individuals to keep valid Turtle)
+#################################################################
+
+embodied:HardcodedRule a owl:Class .
+
+embodied:RuleFireHazard a embodied:HardcodedRule ;
+    embodied:origin "hardcoded" ; embodied:groundsGTStep "E-05,E-12" ;
+    rdfs:comment "IF a flammable Object is near a heat source whose ObjectState=on THEN RefuseAction or InsertSafePrecondition (fire hazard)." .
+
+embodied:RuleElectricalHazard a embodied:HardcodedRule ;
+    embodied:origin "hardcoded" ; embodied:groundsGTStep "E-06,E-12" ;
+    rdfs:comment "IF an Appliance is in Proximity to water THEN RefuseAction (electrical hazard)." .
+
+embodied:RuleSafetyFirst a embodied:HardcodedRule ;
+    embodied:origin "hardcoded" ; embodied:groundsGTStep "E-15" ;
+    rdfs:comment "IF an Action completes the Goal AND raises a Hazard THEN veto (refuse even if the goal then fails). Safety outranks completion -- parallel to AV GT-16 / code C-15." .

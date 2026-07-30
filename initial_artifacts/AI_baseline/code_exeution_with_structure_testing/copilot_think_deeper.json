@@ -1,0 +1,260 @@
+{
+  "intent": "Protect the sensitive files at the given path",
+  "policies": [
+    {
+      "id": "P0",
+      "parent_id": null,
+      "level": "declarative",
+      "definer": "system owner",
+      "enforcer": "orchestrator",
+      "action": "ensure the confidentiality, integrity, and availability of files under /srv/app/config",
+      "constraints": {
+        "resource": "files (configuration files)",
+        "spatial": "/srv/app/config",
+        "temporal": null
+      },
+      "context": "code execution environment where these files are treated as sensitive configuration",
+      "rationale": "This restates the high-level intent as a top-level goal to protect the specified sensitive file set."
+    },
+    {
+      "id": "P1",
+      "parent_id": "P0",
+      "level": "definitive",
+      "definer": "security team",
+      "enforcer": "Monitor",
+      "action": "monitor file integrity by computing and recording cryptographic hashes for files under the path",
+      "constraints": {
+        "resource": "file contents (hashes)",
+        "spatial": "/srv/app/config",
+        "temporal": "continuous"
+      },
+      "context": "production and staging systems where configuration integrity is required",
+      "rationale": "Detecting unauthorized modification requires continuous integrity monitoring of the files."
+    },
+    {
+      "id": "P2",
+      "parent_id": "P0",
+      "level": "definitive",
+      "definer": "security team",
+      "enforcer": "Analyze",
+      "action": "analyze access logs and integrity events for anomalous access patterns or tampering indicators affecting the path",
+      "constraints": {
+        "resource": "access logs; integrity event stream",
+        "spatial": "/srv/app/config",
+        "temporal": "real-time / near-real-time"
+      },
+      "context": "production systems and any environment where the files are actively used",
+      "rationale": "To distinguish benign changes from attacks we must analyze access and integrity signals for anomalies."
+    },
+    {
+      "id": "P3",
+      "parent_id": "P0",
+      "level": "definitive",
+      "definer": "system administrator",
+      "enforcer": "Plan",
+      "action": "plan and define least-privilege access controls, ownership, and ACLs for the files at the path",
+      "constraints": {
+        "resource": "access control lists; user/group assignments",
+        "spatial": "/srv/app/config",
+        "temporal": "before deployment and on configuration changes"
+      },
+      "context": "environments where code or operators require access to configuration",
+      "rationale": "Protecting files requires an explicit plan that assigns minimal necessary privileges and ownership."
+    },
+    {
+      "id": "P3.1",
+      "parent_id": "P3",
+      "level": "imperative",
+      "definer": "system administrator",
+      "enforcer": "Execute",
+      "action": "IF a user or process is not in the approved access group for /srv/app/config THEN remove read/write/execute permissions for that user/process",
+      "constraints": {
+        "resource": "file permissions (mode bits, ACL entries)",
+        "spatial": "/srv/app/config",
+        "temporal": "immediate"
+      },
+      "context": "production and staging systems",
+      "rationale": "Enforcing least privilege requires removing permissions from any non-approved actor immediately."
+    },
+    {
+      "id": "P3.2",
+      "parent_id": "P3",
+      "level": "imperative",
+      "definer": "system administrator",
+      "enforcer": "Execute",
+      "action": "IF ownership of files under /srv/app/config is not the designated owner:group THEN set owner:group to the approved service account",
+      "constraints": {
+        "resource": "file ownership (uid:gid)",
+        "spatial": "/srv/app/config",
+        "temporal": "immediate"
+      },
+      "context": "production systems where services run under specific accounts",
+      "rationale": "Correct ownership prevents unauthorized processes from inheriting access and enforces accountability."
+    },
+    {
+      "id": "P3.3",
+      "parent_id": "P3",
+      "level": "imperative",
+      "definer": "system administrator",
+      "enforcer": "Execute",
+      "action": "IF configuration files are finalized for a release AND environment is production THEN set filesystem immutable flag or equivalent to prevent modification",
+      "constraints": {
+        "resource": "file attributes (immutable flag)",
+        "spatial": "/srv/app/config",
+        "temporal": "release-time"
+      },
+      "context": "production release state",
+      "rationale": "Making finalized configs immutable reduces risk of accidental or malicious runtime modification."
+    },
+    {
+      "id": "P4",
+      "parent_id": "P0",
+      "level": "definitive",
+      "definer": "data owner",
+      "enforcer": "Monitor",
+      "action": "monitor backup status and integrity for files under the path",
+      "constraints": {
+        "resource": "backup copies; backup metadata",
+        "spatial": "/srv/app/config (and backup storage)",
+        "temporal": "daily"
+      },
+      "context": "production systems requiring recoverability",
+      "rationale": "Availability and recoverability require regular verification that backups exist and are intact."
+    },
+    {
+      "id": "P4.1",
+      "parent_id": "P4",
+      "level": "imperative",
+      "definer": "data owner",
+      "enforcer": "Execute",
+      "action": "IF no valid backup exists within the last 24 hours THEN create an encrypted backup of /srv/app/config to approved secure storage",
+      "constraints": {
+        "resource": "backup operation; storage quota",
+        "spatial": "/srv/app/config -> secure backup storage",
+        "temporal": "within 1 hour of detection"
+      },
+      "context": "production systems",
+      "rationale": "Automatically creating a recent encrypted backup restores availability after tampering or loss."
+    },
+    {
+      "id": "P5",
+      "parent_id": "P0",
+      "level": "definitive",
+      "definer": "security team",
+      "enforcer": "Plan",
+      "action": "plan and require encryption at rest for files and encryption in transit for any access to the path",
+      "constraints": {
+        "resource": "encryption keys; TLS endpoints",
+        "spatial": "/srv/app/config and network interfaces serving it",
+        "temporal": "continuous"
+      },
+      "context": "production and any environment where sensitive config is stored or transmitted",
+      "rationale": "Encryption protects confidentiality of sensitive configuration both on disk and over the network."
+    },
+    {
+      "id": "P5.1",
+      "parent_id": "P5",
+      "level": "imperative",
+      "definer": "security team",
+      "enforcer": "Execute",
+      "action": "IF files under /srv/app/config are stored unencrypted at rest THEN encrypt them using the approved KMS and store keys per key-management policy",
+      "constraints": {
+        "resource": "files; KMS keys",
+        "spatial": "/srv/app/config",
+        "temporal": "immediate"
+      },
+      "context": "production systems",
+      "rationale": "Encrypting files at rest immediately enforces the confidentiality requirement defined in the plan."
+    },
+    {
+      "id": "P6",
+      "parent_id": "P0",
+      "level": "definitive",
+      "definer": "security operations",
+      "enforcer": "Monitor",
+      "action": "enable and monitor audit logging for all access, modifications, and permission changes to files under the path",
+      "constraints": {
+        "resource": "audit logs; syscall audit stream",
+        "spatial": "/srv/app/config",
+        "temporal": "continuous"
+      },
+      "context": "production and high-risk environments",
+      "rationale": "Comprehensive audit logs are necessary to detect, investigate, and attribute unauthorized activity."
+    },
+    {
+      "id": "P6.1",
+      "parent_id": "P6",
+      "level": "imperative",
+      "definer": "security operations",
+      "enforcer": "Execute",
+      "action": "IF audit analysis detects unauthorized access or modification to /srv/app/config THEN generate an alert to the security team and isolate the offending session or process",
+      "constraints": {
+        "resource": "alerting channel; session/process control",
+        "spatial": "/srv/app/config and host",
+        "temporal": "within seconds of detection"
+      },
+      "context": "production systems",
+      "rationale": "Rapid alerting and isolation limit damage and enable timely incident response after detection."
+    },
+    {
+      "id": "P7",
+      "parent_id": "P0",
+      "level": "definitive",
+      "definer": "runtime security",
+      "enforcer": "Analyze",
+      "action": "analyze runtime processes and binaries that access or execute from /srv/app/config to detect unauthorized code execution or injection",
+      "constraints": {
+        "resource": "process list; binary signatures; execution traces",
+        "spatial": "/srv/app/config and host process namespace",
+        "temporal": "continuous"
+      },
+      "context": "systems that execute code or load configuration at runtime",
+      "rationale": "Preventing code-execution attacks requires analyzing which processes interact with the configuration at runtime."
+    },
+    {
+      "id": "P7.1",
+      "parent_id": "P7",
+      "level": "imperative",
+      "definer": "runtime security",
+      "enforcer": "Execute",
+      "action": "IF a process accesses or executes from /srv/app/config and is not on the approved whitelist THEN terminate the process, quarantine the host if necessary, and create an incident record",
+      "constraints": {
+        "resource": "process control; quarantine mechanism",
+        "spatial": "/srv/app/config and host",
+        "temporal": "immediate"
+      },
+      "context": "production systems",
+      "rationale": "Terminating unapproved processes prevents exploitation of configuration files and contains potential compromise."
+    },
+    {
+      "id": "P8",
+      "parent_id": "P0",
+      "level": "definitive",
+      "definer": "security team",
+      "enforcer": "Plan",
+      "action": "plan periodic rotation of credentials and encryption keys that protect files under the path",
+      "constraints": {
+        "resource": "encryption keys; service credentials",
+        "spatial": "keys and credentials associated with /srv/app/config",
+        "temporal": "rotation interval 90 days (configurable)"
+      },
+      "context": "production systems and any environment using long-lived credentials",
+      "rationale": "Regular rotation reduces the window of exposure if credentials or keys are compromised."
+    },
+    {
+      "id": "P8.1",
+      "parent_id": "P8",
+      "level": "imperative",
+      "definer": "security team",
+      "enforcer": "Execute",
+      "action": "IF a key or credential protecting /srv/app/config is older than the rotation interval THEN rotate the key/credential and re-encrypt or reconfigure dependent services",
+      "constraints": {
+        "resource": "keys; credentials; re-encryption operations",
+        "spatial": "/srv/app/config and dependent services",
+        "temporal": "within maintenance window following detection"
+      },
+      "context": "production systems",
+      "rationale": "Automated rotation and reconfiguration enforce the planned rotation schedule and maintain confidentiality."
+    }
+  ]
+}

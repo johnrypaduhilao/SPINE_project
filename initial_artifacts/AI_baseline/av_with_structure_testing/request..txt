@@ -1,0 +1,105 @@
+You are a policy refinement engine. Your job is to refine a single high-level
+natural-language intent into a tree of structured policies.
+
+POLICY MODEL
+Every policy is a tuple P = (D, E, A, C(R, S, T), CT):
+  D  = Definer    : the authority or stakeholder accountable for establishing
+                    this policy. Name the specific responsible party -- e.g., a
+                    regulatory or standards body, a safety or security authority,
+                    a system operator, a data owner, or the system itself.
+                    Definers may differ across abstraction levels.
+  E  = Enforcer   : the single component that carries the policy out, drawn from
+                    the MAPE roles (Monitor, Analyze, Plan, Execute).
+  A  = Action     : the operation to perform or constrain. Imperative actions are
+                    written as IF <condition> THEN <action>.
+  C  = Constraints, with three kinds:
+        R = Resource : the entity the action operates on or consumes -- any
+                       consumable entity (e.g., a file, a vehicle, a service,
+                       compute, a deadline), together with its relevant metric.
+        S = Spatial  : location (e.g., path, lane, geofence, address, range).
+        T = Temporal : timing (e.g., deadline, duration, frequency, continuous).
+  CT = Context    : the operating conditions that select which policy applies
+                    (e.g., environment such as production vs. staging, operating
+                    mode, actor privilege level). Runtime situational factors --
+                    current weather, current traffic, a value crossing a
+                    threshold -- are NOT context; they are the condition that
+                    fires a rule and belong in the imperative's IF.
+
+ABSTRACTION LEVELS (a policy is exactly one of these)
+  declarative : states the goal/what, no mechanism (top of the tree); enforced by
+                the Orchestrator.
+  definitive  : specifies what to monitor/analyze/decide, still mechanism-agnostic;
+                enforced by Monitor, Analyze, or Plan.
+  imperative  : a concrete executable rule, written IF <condition> THEN <action>;
+                enforced by Execute.
+
+REFINEMENT RULES
+  - The root is the intent restated as a single declarative policy (P0).
+  - Each policy may have children that refine it toward execution.
+  - Every non-root policy names its parent_id (this forms the chain of causality).
+  - Every policy includes a one-sentence rationale: WHY it follows from its parent.
+  - Use the Monitor / Analyze / Plan roles as enforcers for definitive policies and
+    Execute for imperative policies.
+
+==================== WORKED EXAMPLE (a different AV intent) ====================
+INTENT: "Maintain enough battery charge to complete the planned trip"
+
+P0  level=declarative  parent=none
+    D=vehicle owner  E=assurance-system  A=maintain sufficient battery charge for the trip
+    C: R=battery (state-of-charge)  CT=trip in progress
+    rationale: formalizes the raw intent as the root declarative policy.
+
+P1  level=definitive  parent=P0
+    D=vehicle manufacturer  E=monitor  A=monitor battery state-of-charge
+    C: R=battery (state-of-charge)  T=continuous  CT=trip in progress
+    rationale: managing charge requires continuously observing the current charge level.
+
+P2  level=definitive  parent=P1
+    D=vehicle manufacturer  E=analyzer  A=estimate remaining range vs. distance to destination/charger
+    C: R=battery (state-of-charge)  S=distance to charger/destination  T=time to depletion  CT=trip in progress
+    rationale: to act in time we must compare available range against what the trip needs.
+
+P3  level=definitive  parent=P2
+    D=vehicle operator  E=planner  A=select a charging response when range is insufficient
+    C: R=battery (state-of-charge)  S=reachable chargers  CT=trip in progress
+    rationale: decide how to respond once range is found insufficient.
+
+P3.1 level=imperative  parent=P3
+    D=vehicle operator  E=executor  A=IF state-of-charge below safe threshold AND a charger is reachable THEN reroute to the nearest reachable charger
+    C: R=battery (state-of-charge)  S=charger within range  CT=trip in progress
+    rationale: divert before depletion while a charger is still reachable.
+
+P3.2 level=imperative  parent=P3
+    D=vehicle manufacturer  E=executor  A=IF state-of-charge critically low AND no charger reachable THEN engage energy-saving (eco) mode
+    C: R=battery (state-of-charge)  CT=trip in progress
+    rationale: extend range when charge is critically low and no charger is reachable.
+=============================================================================
+
+NOW DO THE SAME FOR THIS INTENT:
+INTENT: limit_speed("ego vehicle")
+  ("Keep the vehicle's speed within the safe limit for the current conditions"; domain: autonomous driving)
+
+Build the full policy tree. Decompose the intent into its sub-goals first, then
+refine each toward imperative, executable policies. Use the policy model and
+levels exactly as defined above.
+
+OUTPUT FORMAT
+Return ONLY valid JSON, no prose, no markdown fences. Schema:
+{
+  "intent": "Keep the vehicle's speed within the safe limit for the current conditions",
+  "policies": [
+    {
+      "id": "P0",
+      "parent_id": null,
+      "level": "declarative",
+      "definer": "...",
+      "enforcer": "...",
+      "action": "...",
+      "constraints": { "resource": "...", "spatial": "...", "temporal": "..." },
+      "context": "...",
+      "rationale": "..."
+    }
+  ]
+}
+Use null for any constraint that does not apply. Every non-root policy must have a
+parent_id that exists in the list.

@@ -1,0 +1,95 @@
+{
+"intent": "Keep the vehicle's speed within the safe limit for the current conditions",
+"policies": [
+{
+"id": "P0",
+"parent_id": null,
+"level": "declarative",
+"definer": "regulatory authority",
+"enforcer": "orchestrator",
+"action": "limit the speed of the ego vehicle to a safe threshold based on environmental and regulatory conditions",
+"constraints": {
+"resource": "vehicle (speed)",
+"spatial": "current operational domain",
+"temporal": "continuous"
+},
+"context": "autonomous driving mode",
+"rationale": "formalizes the raw intent to maintain safe speeds under varying conditions as the root declarative policy."
+},
+{
+"id": "P1",
+"parent_id": "P0",
+"level": "definitive",
+"definer": "vehicle manufacturer",
+"enforcer": "monitor",
+"action": "monitor regulatory speed limits, current vehicle speed, and environmental safety factors",
+"constraints": {
+"resource": "sensors and map data (speed limits, weather, traction)",
+"spatial": "current location and immediate surroundings",
+"temporal": "continuous"
+},
+"context": "autonomous driving mode",
+"rationale": "establishing a safe speed requires continuously observing the legal limits, current vehicle speed, and surrounding environment."
+},
+{
+"id": "P2",
+"parent_id": "P1",
+"level": "definitive",
+"definer": "safety authority",
+"enforcer": "analyze",
+"action": "calculate the dynamic safe speed limit by adjusting the regulatory limit according to environmental degradation factors",
+"constraints": {
+"resource": "compute (dynamic speed threshold)",
+"spatial": "current path segment",
+"temporal": "real-time"
+},
+"context": "autonomous driving mode",
+"rationale": "the legal speed limit must be dynamically adjusted downward when environmental conditions reduce safety margins."
+},
+{
+"id": "P3",
+"parent_id": "P2",
+"level": "definitive",
+"definer": "vehicle manufacturer",
+"enforcer": "plan",
+"action": "generate a velocity trajectory that smoothly transitions the vehicle to match the calculated dynamic safe speed limit",
+"constraints": {
+"resource": "vehicle trajectory (acceleration/deceleration profile)",
+"spatial": "forward path",
+"temporal": "lookahead horizon"
+},
+"context": "autonomous driving mode",
+"rationale": "before taking action, the system must formulate a safe and comfortable plan to transition to the newly calculated target speed."
+},
+{
+"id": "P3.1",
+"parent_id": "P3",
+"level": "imperative",
+"definer": "system operator",
+"enforcer": "execute",
+"action": "IF current vehicle speed exceeds the dynamic safe speed limit THEN apply braking and reduce throttle to match the target speed profile",
+"constraints": {
+"resource": "braking system and powertrain (torque)",
+"spatial": null,
+"temporal": "immediate"
+},
+"context": "autonomous driving mode",
+"rationale": "active deceleration is required to bring the vehicle into compliance when traveling faster than the safe limit."
+},
+{
+"id": "P3.2",
+"parent_id": "P3",
+"level": "imperative",
+"definer": "system operator",
+"enforcer": "execute",
+"action": "IF current vehicle speed is below the dynamic safe speed limit AND traffic flow permits THEN modulate throttle to smoothly approach and maintain the target speed",
+"constraints": {
+"resource": "powertrain (throttle)",
+"spatial": null,
+"temporal": "continuous"
+},
+"context": "autonomous driving mode",
+"rationale": "safely increasing or maintaining speed ensures optimal traffic flow while staying strictly within calculated safety bounds."
+}
+]
+}

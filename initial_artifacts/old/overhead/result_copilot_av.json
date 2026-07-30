@@ -1,0 +1,230 @@
+{
+    "intent": "Reach destination safely and on time",
+    "policies": [
+        {
+            "id": "P0",
+            "parent_id": null,
+            "level": "declarative",
+            "definer": "system",
+            "enforcer": "assurance-system",
+            "action": "achieve arrival at the planned destination while ensuring occupant and road-user safety and meeting the scheduled arrival time",
+            "constraints": {
+                "resource": "fuel/battery state-of-charge; vehicle health",
+                "spatial": null,
+                "temporal": "scheduled arrival time / allowable arrival window"
+            },
+            "context": "trip planned or in progress",
+            "rationale": "This restates the user's high-level intent as a system-level goal combining safety and timeliness for the trip."
+        },
+        {
+            "id": "P1",
+            "parent_id": "P0",
+            "level": "definitive",
+            "definer": "system",
+            "enforcer": "monitor",
+            "action": "continuously monitor vehicle state, driver/passenger status, surrounding environment, and route progress",
+            "constraints": {
+                "resource": "sensor bandwidth; compute",
+                "spatial": "proximity to other road users and lane position",
+                "temporal": "continuous / real-time"
+            },
+            "context": "while vehicle is operating",
+            "rationale": "To ensure safety and on-time arrival we must observe vehicle, occupant, and environment states in real time."
+        },
+        {
+            "id": "P2",
+            "parent_id": "P0",
+            "level": "definitive",
+            "definer": "system",
+            "enforcer": "analyzer",
+            "action": "estimate current ETA, remaining travel time, and safety risk level using monitored data and external inputs (traffic, weather, incidents)",
+            "constraints": {
+                "resource": "traffic and weather data; compute",
+                "spatial": "distance to destination; distance to hazards",
+                "temporal": "updated at least every 5 seconds or on significant change"
+            },
+            "context": "after each monitoring update or when external conditions change",
+            "rationale": "Comparing ETA and safety risk against the schedule and safety thresholds is necessary to decide corrective actions."
+        },
+        {
+            "id": "P3",
+            "parent_id": "P2",
+            "level": "definitive",
+            "definer": "system",
+            "enforcer": "planner",
+            "action": "generate candidate plans that trade off safe driving behaviors and schedule adherence, including route alternatives, speed profiles, and stop scheduling",
+            "constraints": {
+                "resource": "available routes; reachable chargers/fuel; compute",
+                "spatial": "feasible reroutes within map network",
+                "temporal": "plans must respect arrival window and legal speed limits"
+            },
+            "context": "when ETA deviates from scheduled arrival or safety risk exceeds nominal",
+            "rationale": "When analysis shows a risk to safety or timeliness, the system must produce concrete response options to resolve the deviation."
+        },
+        {
+            "id": "P4",
+            "parent_id": "P3",
+            "level": "imperative",
+            "definer": "system",
+            "enforcer": "executor",
+            "action": "select and execute the plan that satisfies safety constraints and best meets the arrival time objective",
+            "constraints": {
+                "resource": "actuator availability; compute",
+                "spatial": "selected route and lane choices",
+                "temporal": "execute immediately upon selection; replan if conditions change"
+            },
+            "context": "when planner presents one or more feasible plans",
+            "rationale": "A chosen plan must be enacted to change vehicle behavior toward safe and timely arrival."
+        },
+        {
+            "id": "P5",
+            "parent_id": "P1",
+            "level": "definitive",
+            "definer": "system",
+            "enforcer": "monitor",
+            "action": "monitor compliance with traffic laws and local regulations (speed limits, signals, right-of-way)",
+            "constraints": {
+                "resource": null,
+                "spatial": "current road segment and jurisdiction",
+                "temporal": "continuous"
+            },
+            "context": "always while driving",
+            "rationale": "Legal compliance is a baseline requirement for safe operation and must be observed continuously."
+        },
+        {
+            "id": "P6",
+            "parent_id": "P5",
+            "level": "imperative",
+            "definer": "system",
+            "enforcer": "executor",
+            "action": "enforce legal speed limits and signal compliance by limiting commanded speed and performing required maneuvers",
+            "constraints": {
+                "resource": "vehicle power and braking capability",
+                "spatial": "current lane and speed zone",
+                "temporal": "immediate enforcement"
+            },
+            "context": "when vehicle speed or behavior would violate a law or regulation",
+            "rationale": "If monitored behavior would break laws, the executor must intervene to maintain legal and safe operation."
+        },
+        {
+            "id": "P7",
+            "parent_id": "P1",
+            "level": "definitive",
+            "definer": "system",
+            "enforcer": "monitor",
+            "action": "monitor dynamic safety-critical events (obstacle intrusion, sudden braking of lead vehicle, pedestrian crossing, sensor faults)",
+            "constraints": {
+                "resource": "low-latency sensors; compute",
+                "spatial": "detection range around vehicle",
+                "temporal": "sub-second detection and reporting"
+            },
+            "context": "always while vehicle is moving",
+            "rationale": "Detecting imminent hazards quickly is required to trigger collision-avoidance actions that preserve safety."
+        },
+        {
+            "id": "P8",
+            "parent_id": "P7",
+            "level": "imperative",
+            "definer": "system",
+            "enforcer": "executor",
+            "action": "perform collision-avoidance maneuvers (automatic braking, evasive steering, horn/visual alerts) when an imminent collision is detected",
+            "constraints": {
+                "resource": "braking and steering authority; traction limits",
+                "spatial": "maneuver within drivable area and legal boundaries",
+                "temporal": "immediate; within milliseconds to seconds depending on threat"
+            },
+            "context": "imminent collision or safety-critical sensor alert",
+            "rationale": "When a collision is imminent, immediate physical interventions are necessary to prevent or mitigate impact, even if they affect timeliness."
+        },
+        {
+            "id": "P9",
+            "parent_id": "P3",
+            "level": "imperative",
+            "definer": "system",
+            "enforcer": "executor",
+            "action": "reroute to faster but safe alternatives when analysis predicts missed arrival and alternatives exist that do not compromise safety",
+            "constraints": {
+                "resource": "map and traffic data; fuel/SoC",
+                "spatial": "alternative route within acceptable detour distance",
+                "temporal": "reroute when ETA exceeds arrival window threshold"
+            },
+            "context": "ETA projected to miss arrival window and safe alternatives available",
+            "rationale": "If timeliness is at risk and safe faster routes exist, rerouting is an actionable way to recover schedule adherence."
+        },
+        {
+            "id": "P10",
+            "parent_id": "P3",
+            "level": "imperative",
+            "definer": "system",
+            "enforcer": "executor",
+            "action": "adjust speed profile within legal and safety limits (e.g., modestly increase speed where safe, or reduce speed to improve safety) to balance arrival time and safety",
+            "constraints": {
+                "resource": "vehicle performance; occupant comfort",
+                "spatial": "current road geometry and traffic",
+                "temporal": "applied continuously while following plan"
+            },
+            "context": "when planner selects speed adjustments to meet ETA without violating safety or law",
+            "rationale": "Fine-grained speed adjustments are a primary control lever to influence ETA while respecting safety constraints."
+        },
+        {
+            "id": "P11",
+            "parent_id": "P0",
+            "level": "definitive",
+            "definer": "system",
+            "enforcer": "analyzer",
+            "action": "apply a safety-first arbitration rule that always prioritizes safety-preserving actions over timeliness when conflicts arise",
+            "constraints": {
+                "resource": null,
+                "spatial": null,
+                "temporal": null
+            },
+            "context": "whenever a planned action would improve ETA but increase safety risk",
+            "rationale": "When safety and timeliness conflict, the system must prefer actions that reduce risk even if arrival is delayed."
+        },
+        {
+            "id": "P12",
+            "parent_id": "P11",
+            "level": "imperative",
+            "definer": "system",
+            "enforcer": "executor",
+            "action": "override or veto any plan or command that would breach defined safety thresholds, notify occupants of delay, and replan for a safe arrival",
+            "constraints": {
+                "resource": "communication channel to occupants",
+                "spatial": null,
+                "temporal": "immediate override upon threshold breach"
+            },
+            "context": "when a candidate plan or current control would exceed safety thresholds",
+            "rationale": "To enforce the safety-first rule, the executor must be able to stop unsafe actions, inform occupants, and compute a safer alternative."
+        },
+        {
+            "id": "P13",
+            "parent_id": "P2",
+            "level": "definitive",
+            "definer": "system",
+            "enforcer": "analyzer",
+            "action": "detect and incorporate external constraints (road closures, legal curfews, passenger constraints, required stops) into ETA and plan generation",
+            "constraints": {
+                "resource": "external data feeds; passenger input",
+                "spatial": "affected road segments",
+                "temporal": "as soon as external constraint is known"
+            },
+            "context": "when external constraints are present or change",
+            "rationale": "External constraints can materially affect both safety and timeliness and must be included in analysis and planning."
+        },
+        {
+            "id": "P14",
+            "parent_id": "P13",
+            "level": "imperative",
+            "definer": "system",
+            "enforcer": "executor",
+            "action": "notify occupants and, if authorized, affected third parties (e.g., dispatch, recipients) of significant ETA changes and safety-related delays",
+            "constraints": {
+                "resource": "vehicle communications; user preferences",
+                "spatial": null,
+                "temporal": "notify within seconds of decision to delay or reroute"
+            },
+            "context": "when ETA changes exceed user-configured notification thresholds or safety-driven delays occur",
+            "rationale": "Timely communication preserves user expectations and allows coordination when safety-driven actions alter arrival time."
+        }
+    ]
+}

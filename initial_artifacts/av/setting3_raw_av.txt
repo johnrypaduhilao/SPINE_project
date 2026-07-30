@@ -1,0 +1,172 @@
+```json
+{
+  "intent": "Cap the vehicle's speed at 30 km/h when there is fog or rain",
+  "policies": [
+    {
+      "id": "P0",
+      "parent_id": null,
+      "level": "declarative",
+      "definer": "human operator",
+      "enforcer": "Orchestrator",
+      "action": "cap",
+      "constraints": {
+        "resource": "vehicle speed",
+        "spatial": "all roads",
+        "temporal": "always"
+      },
+      "context": "reduced-visibility weather conditions (fog or rain)",
+      "rationale": "Restates the raw intent as the root declarative policy: vehicle speed must not exceed 30 km/h whenever fog or rain is present."
+    },
+    {
+      "id": "P1",
+      "parent_id": "P0",
+      "level": "definitive",
+      "definer": "assurance engine",
+      "enforcer": "Monitor",
+      "action": "monitor",
+      "constraints": {
+        "resource": ["vehicle speed", "weather sensor readings"],
+        "spatial": "all roads",
+        "temporal": "always"
+      },
+      "context": "normal and reduced-visibility weather conditions",
+      "rationale": "Enforcing the speed cap requires continuously observing both current vehicle speed and weather sensor data so that any onset of fog or rain is detected immediately."
+    },
+    {
+      "id": "P2",
+      "parent_id": "P0",
+      "level": "definitive",
+      "definer": "assurance engine",
+      "enforcer": "Analyze",
+      "action": "classify",
+      "constraints": {
+        "resource": "weather sensor readings",
+        "spatial": "vehicle surroundings",
+        "temporal": "always"
+      },
+      "context": "normal and reduced-visibility weather conditions",
+      "rationale": "Before the cap can be applied, sensor data must be classified to determine whether current conditions qualify as fog or rain, which is the trigger condition for the cap."
+    },
+    {
+      "id": "P3",
+      "parent_id": "P0",
+      "level": "definitive",
+      "definer": "assurance engine",
+      "enforcer": "Analyze",
+      "action": "compare",
+      "constraints": {
+        "resource": "vehicle speed",
+        "spatial": "all roads",
+        "temporal": "always"
+      },
+      "context": "reduced-visibility weather conditions (fog or rain) confirmed",
+      "rationale": "Once fog or rain is confirmed, current vehicle speed must be compared against the 30 km/h cap to determine whether a corrective action is needed."
+    },
+    {
+      "id": "P4",
+      "parent_id": "P3",
+      "level": "definitive",
+      "definer": "assurance engine",
+      "enforcer": "Plan",
+      "action": "decide",
+      "constraints": {
+        "resource": "speed control command",
+        "spatial": "all roads",
+        "temporal": "always"
+      },
+      "context": "reduced-visibility weather conditions (fog or rain) confirmed and vehicle speed exceeds 30 km/h",
+      "rationale": "A plan must be formulated to reduce speed to at or below 30 km/h only when the comparison reveals the cap is being exceeded under fog or rain conditions."
+    },
+    {
+      "id": "P4.1",
+      "parent_id": "P4",
+      "level": "imperative",
+      "definer": "assurance engine",
+      "enforcer": "Execute",
+      "action": "throttle",
+      "constraints": {
+        "resource": "vehicle throttle and braking actuators",
+        "spatial": "current vehicle position",
+        "temporal": "always"
+      },
+      "context": "reduced-visibility weather conditions (fog or rain) confirmed and vehicle speed exceeds 30 km/h",
+      "rationale": "Throttle and apply braking to bring vehicle speed down to 30 km/h; fires when monitored speed is observed to exceed 30 km/h while fog or rain classification is active."
+    },
+    {
+      "id": "P5",
+      "parent_id": "P0",
+      "level": "definitive",
+      "definer": "assurance engine",
+      "enforcer": "Plan",
+      "action": "decide",
+      "constraints": {
+        "resource": "speed limit parameter",
+        "spatial": "all roads",
+        "temporal": "always"
+      },
+      "context": "transition from reduced-visibility conditions back to normal conditions",
+      "rationale": "When fog or rain clears, a plan must determine that the 30 km/h cap is no longer required so that normal speed limits can be restored safely."
+    },
+    {
+      "id": "P5.1",
+      "parent_id": "P5",
+      "level": "imperative",
+      "definer": "assurance engine",
+      "enforcer": "Execute",
+      "action": "restore",
+      "constraints": {
+        "resource": "speed limit parameter",
+        "spatial": "current vehicle position",
+        "temporal": "always"
+      },
+      "context": "weather conditions reclassified as clear (no fog or rain)",
+      "rationale": "Restore the speed limit parameter to its pre-cap value; fires when the weather classifier transitions from fog-or-rain to clear, confirming the trigger condition is no longer present."
+    },
+    {
+      "id": "P6",
+      "parent_id": "P1",
+      "level": "definitive",
+      "definer": "assurance engine",
+      "enforcer": "Monitor",
+      "action": "monitor",
+      "constraints": {
+        "resource": "weather sensor health status",
+        "spatial": "vehicle sensor suite",
+        "temporal": "always"
+      },
+      "context": "normal and reduced-visibility weather conditions",
+      "rationale": "The speed cap depends on reliable sensor data; sensor health must be monitored so that faults or degraded readings are detected and can trigger a safe fallback."
+    },
+    {
+      "id": "P6.1",
+      "parent_id": "P6",
+      "level": "definitive",
+      "definer": "assurance engine",
+      "enforcer": "Plan",
+      "action": "decide",
+      "constraints": {
+        "resource": "speed control command",
+        "spatial": "all roads",
+        "temporal": "always"
+      },
+      "context": "weather sensor fault or degraded reading detected",
+      "rationale": "When sensor health is compromised, a plan must determine a safe fallback speed to apply because the system can no longer reliably classify weather conditions."
+    },
+    {
+      "id": "P6.1.1",
+      "parent_id": "P6.1",
+      "level": "imperative",
+      "definer": "assurance engine",
+      "enforcer": "Execute",
+      "action": "throttle",
+      "constraints": {
+        "resource": "vehicle throttle and braking actuators",
+        "spatial": "current vehicle position",
+        "temporal": "always"
+      },
+      "context": "weather sensor fault or degraded reading detected",
+      "rationale": "Apply the 30 km/h cap as a precautionary measure when sensor health is degraded; fires when a sensor fault is observed, defaulting to the restricted speed until reliable data is restored."
+    }
+  ]
+}
+```

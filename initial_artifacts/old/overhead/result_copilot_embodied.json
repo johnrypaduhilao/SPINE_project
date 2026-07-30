@@ -1,0 +1,181 @@
+{
+  "intent": "Complete the requested household task safely and successfully",
+  "policies": [
+    {
+      "id": "P0",
+      "parent_id": null,
+      "level": "declarative",
+      "definer": "system",
+      "enforcer": "assurance-system",
+      "action": "complete the requested household task while ensuring safety and successful outcome",
+      "constraints": { "resource": null, "spatial": null, "temporal": null },
+      "context": "when a household task is requested by an authorized user",
+      "rationale": "This restates the user's high-level intent as the root goal for all refinements."
+    },
+    {
+      "id": "P1",
+      "parent_id": "P0",
+      "level": "definitive",
+      "definer": "system",
+      "enforcer": "monitor",
+      "action": "observe and verify the task request, user intent, and authorization",
+      "constraints": { "resource": "compute for verification", "spatial": null, "temporal": "immediate on request" },
+      "context": "upon receiving a task request",
+      "rationale": "To act on the root goal we must first confirm what was requested and that the requester is authorized."
+    },
+    {
+      "id": "P2",
+      "parent_id": "P1",
+      "level": "definitive",
+      "definer": "system",
+      "enforcer": "analyzer",
+      "action": "interpret task semantics, success criteria, and required subtasks",
+      "constraints": { "resource": "compute; knowledge base", "spatial": null, "temporal": "before planning" },
+      "context": "after task request verification",
+      "rationale": "Understanding the task and its success criteria is necessary to plan safe, effective actions."
+    },
+    {
+      "id": "P3",
+      "parent_id": "P2",
+      "level": "definitive",
+      "definer": "system",
+      "enforcer": "monitor",
+      "action": "assess environment, human presence, obstacles, and available tools/resources",
+      "constraints": { "resource": "battery; manipulators; sensors", "spatial": "workspace geometry; obstacle distances", "temporal": "continuous until execution" },
+      "context": "when task requirements are known",
+      "rationale": "A safe plan requires current environmental and resource information to avoid hazards and confirm feasibility."
+    },
+    {
+      "id": "P4",
+      "parent_id": "P3",
+      "level": "definitive",
+      "definer": "system",
+      "enforcer": "analyzer",
+      "action": "evaluate safety risks, failure modes, and human-robot interaction constraints",
+      "constraints": { "resource": "compute for risk models", "spatial": "proximity thresholds to humans and fragile objects", "temporal": "risk assessment before execution" },
+      "context": "with environment and human presence data available",
+      "rationale": "Identifying risks and interaction limits is required to ensure the task can be performed safely."
+    },
+    {
+      "id": "P5",
+      "parent_id": "P4",
+      "level": "definitive",
+      "definer": "system",
+      "enforcer": "planner",
+      "action": "generate one or more task plans that satisfy success criteria while minimizing risk",
+      "constraints": { "resource": "available tools; battery; time-to-deadline", "spatial": "workspace reachability; safe distances", "temporal": "plans include estimated durations and deadlines" },
+      "context": "when risks and resources are evaluated",
+      "rationale": "We must produce concrete candidate plans that balance task success and safety given constraints."
+    },
+    {
+      "id": "P6",
+      "parent_id": "P5",
+      "level": "imperative",
+      "definer": "system",
+      "enforcer": "executor",
+      "action": "select the plan with acceptable risk and resource usage and request user confirmation if risk or deviation from request is nontrivial",
+      "constraints": { "resource": "battery above minimum threshold; tool availability", "spatial": null, "temporal": "selection before execution; confirmation within user-noticeable window" },
+      "context": "when multiple plans exist or when plan deviates from original request",
+      "rationale": "Choosing a single plan and involving the user when tradeoffs exist ensures alignment and consent for nontrivial changes."
+    },
+    {
+      "id": "P7",
+      "parent_id": "P6",
+      "level": "imperative",
+      "definer": "system",
+      "enforcer": "executor",
+      "action": "acquire and verify required tools and materials before starting execution",
+      "constraints": { "resource": "tool inventory; manipulator capacity", "spatial": "tools within reachable workspace", "temporal": "acquisition immediately prior to task start" },
+      "context": "after plan selection and user confirmation if required",
+      "rationale": "Ensuring required tools are present and functional prevents mid-task failures and unsafe improvisation."
+    },
+    {
+      "id": "P8",
+      "parent_id": "P7",
+      "level": "imperative",
+      "definer": "system",
+      "enforcer": "executor",
+      "action": "execute the selected plan using safe motion profiles, force limits, and human-aware behaviors",
+      "constraints": { "resource": "actuator torque limits; battery", "spatial": "maintain human-safe distances; respect geofences", "temporal": "adhere to planned timing and allow safe pauses" },
+      "context": "when tools are verified and environment remains within assessed bounds",
+      "rationale": "Concrete execution rules translate the plan into actions while enforcing safety margins and interaction norms."
+    },
+    {
+      "id": "P9",
+      "parent_id": "P8",
+      "level": "definitive",
+      "definer": "system",
+      "enforcer": "monitor",
+      "action": "continuously monitor task progress, environment changes, human behavior, and system health",
+      "constraints": { "resource": "sensor bandwidth; compute", "spatial": "monitor within workspace and adjacent zones", "temporal": "real-time continuous monitoring" },
+      "context": "during execution",
+      "rationale": "Ongoing observation is required to detect deviations, hazards, or failures and to enable timely responses."
+    },
+    {
+      "id": "P10",
+      "parent_id": "P9",
+      "level": "definitive",
+      "definer": "system",
+      "enforcer": "analyzer",
+      "action": "detect anomalies, safety violations, or resource depletion and estimate impact on task success",
+      "constraints": { "resource": "error detection models; battery SoC", "spatial": "distance to hazards; blocked paths", "temporal": "detect within safety-critical latency" },
+      "context": "when monitoring data indicates deviation from expected behavior",
+      "rationale": "Analyzing anomalies and their impact enables informed decisions about continuing, adapting, or aborting the task."
+    },
+    {
+      "id": "P11",
+      "parent_id": "P10",
+      "level": "imperative",
+      "definer": "system",
+      "enforcer": "planner",
+      "action": "if anomaly or hazard is detected, plan a safe mitigation: pause, retreat, replan, or request human intervention",
+      "constraints": { "resource": "remaining battery; safe retreat path", "spatial": "clearance for retreat; human proximity", "temporal": "mitigation plan within safety-critical response time" },
+      "context": "when an analyzed anomaly exceeds predefined safety thresholds",
+      "rationale": "A predefined set of mitigations ensures rapid, safe responses to hazards or failures that threaten task success or safety."
+    },
+    {
+      "id": "P12",
+      "parent_id": "P11",
+      "level": "imperative",
+      "definer": "system",
+      "enforcer": "executor",
+      "action": "execute the chosen mitigation immediately and notify the user of status and required actions",
+      "constraints": { "resource": "communication channel; safe motion capability", "spatial": "move to safe pose or location", "temporal": "execute within safety-critical latency and send notification promptly" },
+      "context": "when mitigation planning selects an immediate action",
+      "rationale": "Carrying out the mitigation and informing the user closes the loop between detection and recovery while keeping the user informed."
+    },
+    {
+      "id": "P13",
+      "parent_id": "P8",
+      "level": "definitive",
+      "definer": "system",
+      "enforcer": "monitor",
+      "action": "verify task success criteria are met and perform quality checks on outcomes",
+      "constraints": { "resource": "sensors for verification; compute", "spatial": "inspection within task workspace", "temporal": "verification immediately after task completion" },
+      "context": "after execution completes or is paused for inspection",
+      "rationale": "Confirming success and quality ensures the task was completed as requested and safely."
+    },
+    {
+      "id": "P14",
+      "parent_id": "P13",
+      "level": "imperative",
+      "definer": "system",
+      "enforcer": "executor",
+      "action": "if verification fails, replan corrective actions or request user guidance and do not declare completion",
+      "constraints": { "resource": "available tools; additional time budget", "spatial": "access to failed area", "temporal": "initiate correction within user-acceptable timeframe" },
+      "context": "when verification indicates unmet success criteria",
+      "rationale": "Corrective planning or human guidance is required to achieve the requested outcome rather than falsely reporting success."
+    },
+    {
+      "id": "P15",
+      "parent_id": "P14",
+      "level": "imperative",
+      "definer": "system",
+      "enforcer": "executor",
+      "action": "report final status to the user with a summary of actions taken, any deviations, and recommended follow-ups",
+      "constraints": { "resource": "communication channel; log storage", "spatial": null, "temporal": "report upon final completion or abort" },
+      "context": "after task completion, successful correction, or abort",
+      "rationale": "Providing a clear final report closes the interaction loop and documents outcomes and any outstanding issues for the user."
+    }
+  ]
+}

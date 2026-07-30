@@ -1,0 +1,155 @@
+{
+    "intent": "Complete the requested code task safely and correctly",
+    "policies": [
+        {
+            "action": "complete the requested code task safely and correctly",
+            "constraints": {
+                "resource": "allocated compute and memory limits",
+                "spatial": "isolated runtime sandbox",
+                "temporal": "maximum execution timeout"
+            },
+            "context": "code execution request received",
+            "definer": "system",
+            "enforcer": "code-execution-engine",
+            "id": "P0",
+            "level": "declarative",
+            "parent_id": null,
+            "rationale": "Formalizes the raw intent as the root declarative policy for managing safe and correct code execution."
+        },
+        {
+            "action": "validate source code syntax and perform static analysis",
+            "constraints": {
+                "resource": "AST parser and linter tools",
+                "spatial": null,
+                "temporal": "pre-execution phase"
+            },
+            "context": "source code provided by user",
+            "definer": "system",
+            "enforcer": "monitor",
+            "id": "P1",
+            "level": "definitive",
+            "parent_id": "P0",
+            "rationale": "Ensuring correctness requires analyzing the source code for syntactic validity before attempting execution."
+        },
+        {
+            "action": "reject execution and return syntax error reports to the user",
+            "constraints": {
+                "resource": null,
+                "spatial": null,
+                "temporal": "immediate"
+            },
+            "context": "syntax validation or static analysis checks fail",
+            "definer": "system",
+            "enforcer": "executor",
+            "id": "P1.1",
+            "level": "imperative",
+            "parent_id": "P1",
+            "rationale": "If the code is syntactically broken, execution must be blocked immediately to prevent unpredictable runtime errors."
+        },
+        {
+            "action": "scan code for unsafe system calls, malicious patterns, or unauthorized file system operations",
+            "constraints": {
+                "resource": "security policy ruleset",
+                "spatial": "host environment boundary",
+                "temporal": "pre-execution phase"
+            },
+            "context": "code passes syntax validation",
+            "definer": "system",
+            "enforcer": "analyzer",
+            "id": "P2",
+            "level": "definitive",
+            "parent_id": "P0",
+            "rationale": "To protect the host environment, code must be thoroughly analyzed for malicious or restricted operations prior to runtime."
+        },
+        {
+            "action": "block code execution and log a critical security violation",
+            "constraints": {
+                "resource": "security audit log",
+                "spatial": null,
+                "temporal": "immediate"
+            },
+            "context": "restricted system calls or malicious signatures are detected",
+            "definer": "system",
+            "enforcer": "executor",
+            "id": "P2.1",
+            "level": "imperative",
+            "parent_id": "P2",
+            "rationale": "If safety violations are discovered during analysis, execution must be aborted to guarantee system integrity."
+        },
+        {
+            "action": "configure a secure containerized environment with strict physical resource caps",
+            "constraints": {
+                "resource": "maximum CPU shares and memory limits",
+                "spatial": "isolated container network namespaces",
+                "temporal": "hard wall-clock timeout restriction"
+            },
+            "context": "code passes pre-execution security and syntax checks",
+            "definer": "system",
+            "enforcer": "planner",
+            "id": "P3",
+            "level": "definitive",
+            "parent_id": "P0",
+            "rationale": "Executing untrusted code safely demands provisioning an isolated runtime environment with rigid operational guardrails."
+        },
+        {
+            "action": "track real-time CPU, memory utilization, and total execution runtime duration",
+            "constraints": {
+                "resource": "kernel cgroup metrics",
+                "spatial": "container boundary",
+                "temporal": "continuous monitoring during runtime"
+            },
+            "context": "code execution is active inside the container",
+            "definer": "system",
+            "enforcer": "monitor",
+            "id": "P3.1",
+            "level": "definitive",
+            "parent_id": "P3",
+            "rationale": "Continuous monitoring is required to ensure the executing task does not consume resources past its allocated budget."
+        },
+        {
+            "action": "terminate the execution process and emit a resource exhaustion fault",
+            "constraints": {
+                "resource": null,
+                "spatial": null,
+                "temporal": "immediate"
+            },
+            "context": "runtime metrics exceed maximum configured memory limit or time-to-live threshold",
+            "definer": "system",
+            "enforcer": "executor",
+            "id": "P3.2",
+            "level": "imperative",
+            "parent_id": "P3.1",
+            "rationale": "If a running program breaks out of its allocated resource budget, it must be forcefully terminated to prevent denial-of-service conditions."
+        },
+        {
+            "action": "evaluate program output and exit status against expected functional test assertions",
+            "constraints": {
+                "resource": "validation test suite",
+                "spatial": "sandbox stdout/stderr buffers",
+                "temporal": "post-execution phase"
+            },
+            "context": "execution completes without triggering a runtime fault",
+            "definer": "system",
+            "enforcer": "analyzer",
+            "id": "P4",
+            "level": "definitive",
+            "parent_id": "P0",
+            "rationale": "To verify correctness, the final outputs generated by the executed task must be checked against the defined correctness criteria."
+        },
+        {
+            "action": "compile final outputs and return successful task completion response to user",
+            "constraints": {
+                "resource": "output payload size limit",
+                "spatial": null,
+                "temporal": null
+            },
+            "context": "all functional test assertions pass successfully",
+            "definer": "system",
+            "enforcer": "executor",
+            "id": "P4.1",
+            "level": "imperative",
+            "parent_id": "P4",
+            "rationale": "Once correctness is fully validated, the process concludes by securely packaging and returning the valid results."
+        }
+    ]
+}

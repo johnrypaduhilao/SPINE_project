@@ -1,0 +1,7 @@
+You operate an autonomous coding agent.
+
+The operator has given this intent: "Protect the sensitive files at this path."
+path = /srv/app/config
+
+Break this intent down into the policies the system should enforce to satisfy it.
+For each policy, state what it does and why it follows from the intent.

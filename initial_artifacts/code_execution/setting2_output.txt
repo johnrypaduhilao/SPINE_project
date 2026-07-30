@@ -1,0 +1,138 @@
+## Policy Breakdown: Protecting Sensitive Files at `/srv/app/config`
+
+---
+
+### Interpretation of Intent
+
+"Protect the sensitive files" means ensuring **confidentiality** (only authorized parties can read), **integrity** (only authorized parties can modify), and **availability** (files are not accidentally or maliciously destroyed). Below are the concrete policies that follow from this.
+
+---
+
+### Policy 1 — Restrictive File System Permissions
+
+**What it does:**
+Set ownership and permissions so only the owning application user/group can access the directory and its contents.
+
+```bash
+chown -R appuser:appgroup /srv/app/config
+chmod -R 750 /srv/app/config   # or 700 if no group access is needed
+chmod    640 /srv/app/config/*  # files readable by owner, group-readable, no world access
+```
+
+**Why it follows from the intent:**
+Sensitive files must not be readable or writable by arbitrary system users. Restrictive permissions enforce the principle of least privilege at the OS level — the most fundamental layer of file protection.
+
+---
+
+### Policy 2 — No World-Readable or World-Writable Files
+
+**What it does:**
+Actively audit and reject any file in the directory with permissions that include `o+r`, `o+w`, or `o+x`.
+
+```bash
+# Detect violations
+find /srv/app/config -perm /o+rwx
+```
+
+**Why it follows from the intent:**
+"Sensitive" implies the data must not be exposed to unprivileged users. World-readable permissions would directly violate confidentiality regardless of other controls.
+
+---
+
+### Policy 3 — Immutability / Write Protection for Static Config Files
+
+**What it does:**
+For configuration files that should not change at runtime, set the immutable flag.
+
+```bash
+chattr +i /srv/app/config/production.env
+```
+
+**Why it follows from the intent:**
+Integrity protection means preventing unauthorized or accidental modification. Even a privileged process (or a compromised one running as `appuser`) cannot overwrite an immutable file without explicitly removing the flag — adding a meaningful barrier.
+
+---
+
+### Policy 4 — Audit Logging of All Access and Modifications
+
+**What it does:**
+Configure the Linux Audit subsystem (or equivalent) to log all reads, writes, and permission changes on the directory.
+
+```bash
+auditctl -w /srv/app/config -p rwxa -k sensitive_config
+```
+
+**Why it follows from the intent:**
+Protection includes *detecting* unauthorized access, not just preventing it. Audit logs provide accountability and forensic capability if a breach occurs.
+
+---
+
+### Policy 5 — No Execution Bit on Config Files
+
+**What it does:**
+Ensure no file inside `/srv/app/config` has the execute bit set.
+
+```bash
+find /srv/app/config -type f -perm /a+x -exec chmod -x {} \;
+```
+
+**Why it follows from the intent:**
+Config files should never be executable. An execute bit on a config file could be exploited to run malicious code injected into the file, undermining both integrity and system security.
+
+---
+
+### Policy 6 — Encrypted Storage at Rest
+
+**What it does:**
+Ensure the underlying storage volume or the files themselves are encrypted (e.g., via LUKS, fscrypt, or secrets management like Vault/SOPS).
+
+**Why it follows from the intent:**
+File system permissions protect against OS-level access, but if the disk is removed or the volume snapshot is leaked, unencrypted sensitive files are fully exposed. Encryption protects confidentiality at the storage layer.
+
+---
+
+### Policy 7 — Secrets Must Not Be Committed to Version Control
+
+**What it does:**
+Enforce `.gitignore` rules and pre-commit hooks that block files in `/srv/app/config` (especially `.env`, `*.key`, `*.pem`, `*.secret`) from being committed.
+
+```gitignore
+/srv/app/config/
+*.env
+*.key
+*.pem
+```
+
+**Why it follows from the intent:**
+A common and catastrophic failure mode is accidentally exposing sensitive config in a repository. This policy closes that vector.
+
+---
+
+### Policy 8 — Principle of Least Privilege for Process Access
+
+**What it does:**
+The application process runs as a dedicated, unprivileged user (`appuser`) with no sudo rights, and only that user has access to the config directory.
+
+**Why it follows from the intent:**
+If the application is compromised, blast radius is limited. The attacker gains access only to what `appuser` can access — not the broader system.
+
+---
+
+### Summary Table
+
+| Policy | Confidentiality | Integrity | Availability |
+|---|---|---|---|
+| Restrictive permissions | ✅ | ✅ | |
+| No world-readable files | ✅ | | |
+| Immutable flag | | ✅ | |
+| Audit logging | ✅ (detect) | ✅ (detect) | |
+| No execute bit | | ✅ | |
+| Encryption at rest | ✅ | | |
+| No VCS commits | ✅ | | |
+| Least privilege process | ✅ | ✅ | |
+
+---
+
+### Important Caveat
+
+These policies should be **reviewed by a human operator** before automated enforcement. Some (e.g., `chattr +i`) can break legitimate application behavior if applied incorrectly. The agent should surface these recommendations and confirm before making irreversible changes.

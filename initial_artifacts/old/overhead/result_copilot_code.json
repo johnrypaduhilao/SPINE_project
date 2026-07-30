@@ -1,0 +1,181 @@
+{
+  "intent": "Complete the requested code task safely and correctly",
+  "policies": [
+    {
+      "id": "P0",
+      "parent_id": null,
+      "level": "declarative",
+      "definer": "system",
+      "enforcer": "assurance-system",
+      "action": "complete the requested code task while ensuring safety, correctness, and reproducibility",
+      "constraints": { "resource": "compute/time budget as specified", "spatial": null, "temporal": "meet task deadline if provided" },
+      "context": "when a user submits a code execution or code-writing request",
+      "rationale": "This restates the high-level intent as a system-level goal to guide all refinements."
+    },
+    {
+      "id": "P1",
+      "parent_id": "P0",
+      "level": "definitive",
+      "definer": "system",
+      "enforcer": "monitor",
+      "action": "ingest and validate the task specification, inputs, expected outputs, and any stated constraints",
+      "constraints": { "resource": "minimal parsing compute", "spatial": null, "temporal": "immediate on task receipt" },
+      "context": "upon receipt of a new code task",
+      "rationale": "To complete the task correctly we must first capture and validate the user's requirements and constraints."
+    },
+    {
+      "id": "P2",
+      "parent_id": "P1",
+      "level": "definitive",
+      "definer": "system",
+      "enforcer": "analyzer",
+      "action": "classify the task by language, complexity, required libraries, inputs/outputs, and trust level",
+      "constraints": { "resource": "analysis CPU/time", "spatial": null, "temporal": "before planning or execution" },
+      "context": "after task specification is validated",
+      "rationale": "Accurate classification is needed to choose an appropriate solution approach and safe execution environment."
+    },
+    {
+      "id": "P3",
+      "parent_id": "P2",
+      "level": "definitive",
+      "definer": "system",
+      "enforcer": "analyzer",
+      "action": "perform a security and safety assessment to detect malicious patterns, data exfiltration risks, and resource abuse potential",
+      "constraints": { "resource": "static/dynamic analysis compute", "spatial": null, "temporal": "pre-execution" },
+      "context": "for tasks involving code execution or untrusted inputs",
+      "rationale": "Identifying safety risks before execution prevents harm to systems, data, and users."
+    },
+    {
+      "id": "P4",
+      "parent_id": "P2",
+      "level": "definitive",
+      "definer": "system",
+      "enforcer": "planner",
+      "action": "design a solution approach including algorithm, test plan, required dependencies, and success criteria",
+      "constraints": { "resource": "estimated compute and memory", "spatial": null, "temporal": "aligned with task deadline" },
+      "context": "after task classification is complete",
+      "rationale": "A concrete plan and test strategy are required to implement the task correctly and verify results."
+    },
+    {
+      "id": "P5",
+      "parent_id": "P4",
+      "level": "definitive",
+      "definer": "system",
+      "enforcer": "planner",
+      "action": "select an execution environment and sandbox configuration (resource limits, network policy, filesystem policy) appropriate to the task and risk level",
+      "constraints": { "resource": "CPU/memory limits; disk quota", "spatial": null, "temporal": "applies during execution" },
+      "context": "when the plan requires code execution or dependency installation",
+      "rationale": "Choosing a constrained, appropriate environment reduces risk and ensures reproducible behavior."
+    },
+    {
+      "id": "P6",
+      "parent_id": "P5",
+      "level": "imperative",
+      "definer": "system",
+      "enforcer": "executor",
+      "action": "provision an isolated sandbox or container with the selected resource limits and policies",
+      "constraints": { "resource": "enforce CPU quota; enforce memory quota; enforce disk quota", "spatial": null, "temporal": "sandbox lifetime limited to execution window" },
+      "context": "before installing dependencies or running untrusted code",
+      "rationale": "An isolated sandbox must be created to enforce the planner's resource and access constraints during execution."
+    },
+    {
+      "id": "P7",
+      "parent_id": "P6",
+      "level": "imperative",
+      "definer": "system",
+      "enforcer": "executor",
+      "action": "install and verify required dependencies using pinned versions and integrity checks, with network access restricted as specified",
+      "constraints": { "resource": "installation CPU/time; network bandwidth limited", "spatial": null, "temporal": "installation timeout enforced" },
+      "context": "if the task requires external libraries or packages",
+      "rationale": "Deterministic, integrity-checked dependency installation prevents supply-chain and reproducibility issues."
+    },
+    {
+      "id": "P8",
+      "parent_id": "P6",
+      "level": "imperative",
+      "definer": "system",
+      "enforcer": "executor",
+      "action": "run static analysis, linters, and policy checks on the code to detect obvious errors and unsafe constructs before execution",
+      "constraints": { "resource": "analysis CPU/time", "spatial": null, "temporal": "must complete pre-execution" },
+      "context": "when source code is provided or generated",
+      "rationale": "Pre-execution analysis reduces runtime failures and surfaces safety issues early."
+    },
+    {
+      "id": "P9",
+      "parent_id": "P6",
+      "level": "imperative",
+      "definer": "system",
+      "enforcer": "executor",
+      "action": "execute the code in the sandbox against the planned test inputs, capturing stdout/stderr, resource usage, and artifacts, and enforcing per-run timeouts",
+      "constraints": { "resource": "per-run CPU/memory/time limits", "spatial": null, "temporal": "per-run timeout enforced" },
+      "context": "after sandbox provisioning, dependency installation, and prechecks pass",
+      "rationale": "Controlled execution with monitoring is required to obtain outputs while preventing runaway resource consumption or unsafe behavior."
+    },
+    {
+      "id": "P10",
+      "parent_id": "P9",
+      "level": "definitive",
+      "definer": "system",
+      "enforcer": "analyzer",
+      "action": "run automated tests, compare outputs to expected results, and perform result validation including type checks and invariants",
+      "constraints": { "resource": "test execution compute", "spatial": null, "temporal": "validation immediately after execution" },
+      "context": "after code execution completes or times out",
+      "rationale": "Automated verification is necessary to determine whether the task was completed correctly."
+    },
+    {
+      "id": "P11",
+      "parent_id": "P10",
+      "level": "imperative",
+      "definer": "system",
+      "enforcer": "executor",
+      "action": "if tests pass and safety checks are satisfied, mark the task as complete and produce a result package containing code, logs, test reports, and reproducible environment metadata",
+      "constraints": { "resource": "storage for artifacts", "spatial": null, "temporal": "deliver results within reporting timeframe" },
+      "context": "when validation confirms correctness and safety",
+      "rationale": "Packaging verified outputs and provenance supports user trust and reproducibility when the task succeeds."
+    },
+    {
+      "id": "P12",
+      "parent_id": "P10",
+      "level": "imperative",
+      "definer": "system",
+      "enforcer": "executor",
+      "action": "if tests fail or errors occur, collect diagnostics (logs, stack traces, resource metrics), revert or destroy the sandbox, and plan remediation steps or request clarification from the requester",
+      "constraints": { "resource": "diagnostic capture storage; time window for remediation", "spatial": null, "temporal": "error-handling window enforced" },
+      "context": "when validation fails or execution errors occur",
+      "rationale": "Gathering diagnostics and cleaning up the environment enables safe recovery and informed next steps when execution fails."
+    },
+    {
+      "id": "P13",
+      "parent_id": "P3",
+      "level": "definitive",
+      "definer": "system",
+      "enforcer": "planner",
+      "action": "determine mitigation actions for identified safety risks such as denying execution, restricting network, sanitizing outputs, or requiring human review",
+      "constraints": { "resource": "mitigation capability of sandbox", "spatial": null, "temporal": "mitigation decision before execution" },
+      "context": "if the safety assessment flags moderate or high risk",
+      "rationale": "A concrete mitigation plan is required to reduce or eliminate identified risks before proceeding."
+    },
+    {
+      "id": "P14",
+      "parent_id": "P13",
+      "level": "imperative",
+      "definer": "system",
+      "enforcer": "executor",
+      "action": "enforce the chosen mitigations (e.g., disable network, mount filesystem read-only, restrict syscalls, or refuse execution) in the sandbox",
+      "constraints": { "resource": "network disabled or limited; filesystem read-only as specified", "spatial": null, "temporal": "mitigations active for execution duration" },
+      "context": "when mitigation actions are selected for a risky task",
+      "rationale": "Applying technical restrictions enforces the planner's mitigation decisions and prevents risky behaviors at runtime."
+    },
+    {
+      "id": "P15",
+      "parent_id": "P0",
+      "level": "definitive",
+      "definer": "admin",
+      "enforcer": "monitor",
+      "action": "log all actions, decisions, resource usage, and artifacts for auditability and postmortem analysis, and retain logs per retention policy",
+      "constraints": { "resource": "log storage quota", "spatial": null, "temporal": "retention period as policy dictates" },
+      "context": "for every task execution and planning decision",
+      "rationale": "Comprehensive logging and retention enable accountability, debugging, and continuous improvement of the execution pipeline."
+    }
+  ]
+}

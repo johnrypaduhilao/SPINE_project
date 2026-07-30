@@ -1,0 +1,94 @@
+# Policy Breakdown: "Wipe the Stovetop Clean"
+
+---
+
+## Pre-Condition Policies
+
+**Policy 1: Verify Stovetop is Cool Before Contact**
+- **What it does:** Checks surface temperature before any physical contact or placing materials on the stovetop.
+- **Why:** A hot burner causes burns to the robot's end effector, damages cleaning materials, and creates fire/steam hazards. "Clean" implies a safe, completed task — not one that causes secondary damage.
+
+**Policy 2: Confirm Burners are Off**
+- **What it does:** Verifies all burner controls are in the OFF position before proceeding.
+- **Why:** Wiping an active burner is a direct fire and injury hazard. This is a hard safety gate, not optional.
+
+**Policy 3: Clear Loose Items from Surface**
+- **What it does:** Removes pots, pans, grates, or other objects from the stovetop before wiping.
+- **Why:** Wiping around or under objects leaves the surface incompletely clean and risks knocking items onto the floor or damaging them.
+
+---
+
+## Cleaning Method Policies
+
+**Policy 4: Select Appropriate Cleaning Agent**
+- **What it does:** Chooses a cleaner compatible with the stovetop type (glass-ceramic, gas, electric coil) — avoiding abrasives on glass surfaces, avoiding excess liquid near electrical components.
+- **Why:** The wrong cleaner can permanently damage the surface, which contradicts the intent of cleaning it. "Clean" should not mean "damaged."
+
+**Policy 5: Use Appropriate Wiping Tool**
+- **What it does:** Selects a non-scratch cloth or sponge appropriate to the surface material.
+- **Why:** An abrasive pad on a glass cooktop causes scratches. The tool must match the surface to fulfill the intent without harm.
+
+**Policy 6: Apply Cleaner Before Wiping, Not Directly to Heating Elements**
+- **What it does:** Applies cleaning solution to the cloth/sponge rather than spraying directly onto burners, knobs, or electrical components.
+- **Why:** Liquid intrusion into burner assemblies or control knobs creates electrical hazards and corrosion.
+
+**Policy 7: Wipe in a Systematic Pattern Covering the Full Surface**
+- **What it does:** Executes a defined coverage path (e.g., back-to-front, overlapping strokes) across the entire stovetop area.
+- **Why:** "Clean" means the whole surface, not just visible spots. A systematic pattern ensures no area is missed.
+
+**Policy 8: Apply Appropriate Pressure — Not Excessive**
+- **What it does:** Regulates force applied during wiping to be sufficient for soil removal but not enough to damage knobs, grates, or surface coatings.
+- **Why:** Excessive force can break components; insufficient force leaves residue. Both fail the intent.
+
+---
+
+## Completeness & Quality Policies
+
+**Policy 9: Perform a Visual Inspection Pass After Wiping**
+- **What it does:** After the initial wipe, scans the surface for remaining visible residue, grease, or streaks and re-wipes those areas.
+- **Why:** "Clean" is the success criterion. A single pass may not be sufficient; the policy enforces the outcome, not just the action.
+
+**Policy 10: Remove Cleaning Residue / Rinse Pass**
+- **What it does:** Follows up with a damp clean cloth to remove any cleaning agent residue from the surface.
+- **Why:** Leaving chemical residue on a stovetop is a health hazard (residue can vaporize when next heated) and the surface is not truly clean.
+
+**Policy 11: Dry the Surface**
+- **What it does:** Wipes the surface dry with a clean dry cloth after the rinse pass.
+- **Why:** A wet stovetop near electrical components is a hazard, and water spots on glass cooktops mean the task is visually incomplete.
+
+---
+
+## Post-Condition Policies
+
+**Policy 12: Return Grates and Removable Components**
+- **What it does:** Replaces any grates, burner caps, or covers that were removed, in their correct positions.
+- **Why:** The stovetop should be left in a functional, ready-to-use state. Leaving components off is an incomplete task.
+
+**Policy 13: Dispose of or Store Cleaning Materials Appropriately**
+- **What it does:** Places used cloths in the laundry/waste and returns cleaning agents to storage.
+- **Why:** Leaving soiled cloths or open chemicals on the counter creates secondary mess and hazards — the broader environment should not be degraded by the task.
+
+**Policy 14: Log Task Completion with Surface State**
+- **What it does:** Records that the task was completed, noting any anomalies (e.g., stain that could not be removed, damaged component observed).
+- **Why:** Provides accountability and flags issues that may require human follow-up, ensuring the operator's intent is fully communicated even when perfect completion isn't possible.
+
+---
+
+## Summary Table
+
+| Policy | Type | Priority |
+|---|---|---|
+| Verify surface is cool | Safety gate | **Critical** |
+| Confirm burners off | Safety gate | **Critical** |
+| Clear loose items | Pre-condition | High |
+| Select appropriate cleaner | Method | High |
+| Use appropriate tool | Method | High |
+| Apply cleaner safely | Safety/Method | High |
+| Systematic coverage | Completeness | High |
+| Appropriate pressure | Safety/Method | Medium |
+| Visual inspection | Quality check | High |
+| Rinse residue | Health/Safety | High |
+| Dry surface | Safety/Completeness | Medium |
+| Replace components | Post-condition | Medium |
+| Dispose of materials | Post-condition | Medium |
+| Log completion | Accountability | Low |

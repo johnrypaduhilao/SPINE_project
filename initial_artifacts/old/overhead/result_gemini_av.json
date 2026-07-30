@@ -1,0 +1,170 @@
+{
+    "intent": "Reach destination safely and on time",
+    "policies": [
+        {
+            "id": "P0",
+            "parent_id": null,
+            "level": "declarative",
+            "definer": "system",
+            "enforcer": "assurance-system",
+            "action": "reach destination safely and on time",
+            "constraints": {
+                "resource": "compute and vehicle energy",
+                "spatial": "route to destination",
+                "temporal": "arrival deadline"
+            },
+            "context": "active trip in progress",
+            "rationale": "formalizes the raw intent as the root declarative policy encompassing both collision avoidance and deadline adherence."
+        },
+        {
+            "id": "P1",
+            "parent_id": "P0",
+            "level": "definitive",
+            "definer": "system",
+            "enforcer": "monitor",
+            "action": "observe surroundings for obstacles, traffic controls, and lane boundaries",
+            "constraints": {
+                "resource": "sensor data streams",
+                "spatial": "sensor range radius",
+                "temporal": "continuous"
+            },
+            "context": "vehicle in motion",
+            "rationale": "ensuring safety requires continuously perceiving the dynamic environment around the vehicle."
+        },
+        {
+            "id": "P1.1",
+            "parent_id": "P1",
+            "level": "definitive",
+            "definer": "system",
+            "enforcer": "analyzer",
+            "action": "predict trajectories of detected objects and evaluate collision risks",
+            "constraints": {
+                "resource": "compute",
+                "spatial": "safe following distance",
+                "temporal": "real-time latency"
+            },
+            "context": "obstacles or dynamic objects detected within sensor range",
+            "rationale": "to prevent accidents, the system must anticipate the future positions of surrounding objects and calculate risk."
+        },
+        {
+            "id": "P1.2",
+            "parent_id": "P1.1",
+            "level": "definitive",
+            "definer": "system",
+            "enforcer": "planner",
+            "action": "compute evasive maneuvers or speed adjustments to maintain safe margins",
+            "constraints": {
+                "resource": null,
+                "spatial": "drivable free space",
+                "temporal": "time-to-collision threshold"
+            },
+            "context": "high collision risk or trajectory intersection detected",
+            "rationale": "the system must formulate a safe path or action when an obstacle threatens the current trajectory."
+        },
+        {
+            "id": "P1.2.1",
+            "parent_id": "P1.2",
+            "level": "imperative",
+            "definer": "system",
+            "enforcer": "executor",
+            "action": "apply emergency braking",
+            "constraints": {
+                "resource": "brake actuation",
+                "spatial": "stopping distance",
+                "temporal": "immediate"
+            },
+            "context": "time-to-collision is below critical safety threshold",
+            "rationale": "if a collision is imminent, immediate braking is required to avoid or mitigate impact."
+        },
+        {
+            "id": "P1.2.2",
+            "parent_id": "P1.2",
+            "level": "imperative",
+            "definer": "system",
+            "enforcer": "executor",
+            "action": "alter steering angle to navigate around obstacle",
+            "constraints": {
+                "resource": "steering actuation",
+                "spatial": "adjacent clear lane or shoulder",
+                "temporal": "immediate"
+            },
+            "context": "braking alone is insufficient and safe evasive space exists",
+            "rationale": "if braking is insufficient but adjacent space is clear, steering must be adjusted to safely evade the hazard."
+        },
+        {
+            "id": "P2",
+            "parent_id": "P0",
+            "level": "definitive",
+            "definer": "system",
+            "enforcer": "monitor",
+            "action": "track trip progress, traffic conditions, and current estimated time of arrival (ETA)",
+            "constraints": {
+                "resource": "telemetry and traffic data",
+                "spatial": "distance to destination",
+                "temporal": "continuous"
+            },
+            "context": "active trip in progress",
+            "rationale": "meeting a deadline requires tracking the vehicle's progress against the target arrival time."
+        },
+        {
+            "id": "P2.1",
+            "parent_id": "P2",
+            "level": "definitive",
+            "definer": "system",
+            "enforcer": "analyzer",
+            "action": "compare projected ETA against the required arrival deadline",
+            "constraints": {
+                "resource": "compute",
+                "spatial": null,
+                "temporal": "ETA versus deadline difference"
+            },
+            "context": "updated traffic data or travel delays detected on current route",
+            "rationale": "the system must mathematically evaluate if current conditions will cause a failure to arrive on time."
+        },
+        {
+            "id": "P2.2",
+            "parent_id": "P2.1",
+            "level": "definitive",
+            "definer": "system",
+            "enforcer": "planner",
+            "action": "evaluate alternative routes or permissible speed increases to recover time",
+            "constraints": {
+                "resource": null,
+                "spatial": "alternative road networks",
+                "temporal": "time saved by alternative"
+            },
+            "context": "projected ETA exceeds target deadline",
+            "rationale": "when behind schedule, the system must plan valid ways to reduce remaining travel time without violating safety."
+        },
+        {
+            "id": "P2.2.1",
+            "parent_id": "P2.2",
+            "level": "imperative",
+            "definer": "system",
+            "enforcer": "executor",
+            "action": "engage alternative route with lower estimated travel time",
+            "constraints": {
+                "resource": "routing system",
+                "spatial": "alternate route geometry",
+                "temporal": "immediate"
+            },
+            "context": "faster alternate route is available and significantly improves ETA",
+            "rationale": "if a faster viable path exists, switching routes proactively compensates for delays."
+        },
+        {
+            "id": "P2.2.2",
+            "parent_id": "P2.2",
+            "level": "imperative",
+            "definer": "system",
+            "enforcer": "executor",
+            "action": "increase target speed up to the maximum legal limit",
+            "constraints": {
+                "resource": "propulsion actuation",
+                "spatial": "safe following distance",
+                "temporal": "duration of delay recovery"
+            },
+            "context": "current speed is below speed limit and path ahead is clear",
+            "rationale": "if safe and legally permissible, increasing speed directly reduces travel time to help meet the deadline."
+        }
+    ]
+}

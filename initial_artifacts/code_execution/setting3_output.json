@@ -1,0 +1,355 @@
+{
+  "intent": "Protect the sensitive files at this path",
+  "policies": [
+    {
+      "id": "P0",
+      "parent_id": null,
+      "level": "declarative",
+      "definer": "human operator",
+      "enforcer": "Orchestrator",
+      "action": "protect",
+      "constraints": {
+        "resource": "sensitive files",
+        "spatial": "/srv/app/config",
+        "temporal": "always"
+      },
+      "context": "production",
+      "rationale": "Restates the raw intent as the root declarative policy: all sensitive files under the given path must be protected at all times."
+    },
+    {
+      "id": "P1",
+      "parent_id": "P0",
+      "level": "definitive",
+      "definer": "assurance engine",
+      "enforcer": "Monitor",
+      "action": "monitor",
+      "constraints": {
+        "resource": [
+          "file access operations",
+          "file permission attributes",
+          "file integrity checksums"
+        ],
+        "spatial": "/srv/app/config",
+        "temporal": "always"
+      },
+      "context": "production",
+      "rationale": "Protection requires continuous observation of access attempts, permission states, and integrity of files under the path so that violations can be detected."
+    },
+    {
+      "id": "P2",
+      "parent_id": "P0",
+      "level": "definitive",
+      "definer": "assurance engine",
+      "enforcer": "Analyze",
+      "action": "classify",
+      "constraints": {
+        "resource": "files",
+        "spatial": "/srv/app/config",
+        "temporal": "always"
+      },
+      "context": "production",
+      "rationale": "To apply appropriate protections, each file must be classified by sensitivity level so that policies can be scoped correctly."
+    },
+    {
+      "id": "P3",
+      "parent_id": "P0",
+      "level": "definitive",
+      "definer": "assurance engine",
+      "enforcer": "Analyze",
+      "action": "analyze",
+      "constraints": {
+        "resource": [
+          "file access operations",
+          "actor identities",
+          "permission attributes"
+        ],
+        "spatial": "/srv/app/config",
+        "temporal": "always"
+      },
+      "context": "production",
+      "rationale": "Observed access events and permission states must be analyzed against authorization policy to determine whether a violation has occurred."
+    },
+    {
+      "id": "P4",
+      "parent_id": "P0",
+      "level": "definitive",
+      "definer": "assurance engine",
+      "enforcer": "Plan",
+      "action": "decide",
+      "constraints": {
+        "resource": [
+          "file access operations",
+          "actor identities"
+        ],
+        "spatial": "/srv/app/config",
+        "temporal": "always"
+      },
+      "context": "production",
+      "rationale": "When analysis identifies a violation or risk, a response plan must be decided before any enforcement action is taken."
+    },
+    {
+      "id": "P2.1",
+      "parent_id": "P2",
+      "level": "imperative",
+      "definer": "assurance engine",
+      "enforcer": "Execute",
+      "action": "tag",
+      "constraints": {
+        "resource": "files",
+        "spatial": "/srv/app/config",
+        "temporal": "always"
+      },
+      "context": "production",
+      "rationale": "Each file discovered under the path must be tagged with its sensitivity classification so downstream policies can reference it; fires when a file is found without a sensitivity tag."
+    },
+    {
+      "id": "P1.1",
+      "parent_id": "P1",
+      "level": "definitive",
+      "definer": "assurance engine",
+      "enforcer": "Monitor",
+      "action": "monitor",
+      "constraints": {
+        "resource": "file permission attributes",
+        "spatial": "/srv/app/config",
+        "temporal": "always"
+      },
+      "context": "production",
+      "rationale": "Permission attributes must be watched independently so that unauthorized permission changes are detected as a distinct signal from access attempts."
+    },
+    {
+      "id": "P1.2",
+      "parent_id": "P1",
+      "level": "definitive",
+      "definer": "assurance engine",
+      "enforcer": "Monitor",
+      "action": "monitor",
+      "constraints": {
+        "resource": "file integrity checksums",
+        "spatial": "/srv/app/config",
+        "temporal": "always"
+      },
+      "context": "production",
+      "rationale": "Integrity checksums must be tracked continuously so that unauthorized modifications to file content are detected separately from access-control violations."
+    },
+    {
+      "id": "P1.3",
+      "parent_id": "P1",
+      "level": "definitive",
+      "definer": "assurance engine",
+      "enforcer": "Monitor",
+      "action": "monitor",
+      "constraints": {
+        "resource": "file access operations",
+        "spatial": "/srv/app/config",
+        "temporal": "always"
+      },
+      "context": "production",
+      "rationale": "All read, write, execute, and delete operations against files under the path must be captured so that unauthorized access attempts can be identified."
+    },
+    {
+      "id": "P3.1",
+      "parent_id": "P3",
+      "level": "definitive",
+      "definer": "assurance engine",
+      "enforcer": "Analyze",
+      "action": "compare",
+      "constraints": {
+        "resource": [
+          "actor identities",
+          "authorization allowlist"
+        ],
+        "spatial": "/srv/app/config",
+        "temporal": "always"
+      },
+      "context": "production",
+      "rationale": "Each observed actor performing an access operation must be compared against the authorization allowlist to determine whether the access is permitted."
+    },
+    {
+      "id": "P3.2",
+      "parent_id": "P3",
+      "level": "definitive",
+      "definer": "assurance engine",
+      "enforcer": "Analyze",
+      "action": "compare",
+      "constraints": {
+        "resource": [
+          "file permission attributes",
+          "required permission baseline"
+        ],
+        "spatial": "/srv/app/config",
+        "temporal": "always"
+      },
+      "context": "production",
+      "rationale": "Current file permission attributes must be compared against the required baseline to detect any drift that would weaken file protection."
+    },
+    {
+      "id": "P3.3",
+      "parent_id": "P3",
+      "level": "definitive",
+      "definer": "assurance engine",
+      "enforcer": "Analyze",
+      "action": "compare",
+      "constraints": {
+        "resource": [
+          "file integrity checksums",
+          "stored baseline checksums"
+        ],
+        "spatial": "/srv/app/config",
+        "temporal": "always"
+      },
+      "context": "production",
+      "rationale": "Live checksums must be compared against stored baselines to detect unauthorized content modifications."
+    },
+    {
+      "id": "P4.1",
+      "parent_id": "P4",
+      "level": "definitive",
+      "definer": "assurance engine",
+      "enforcer": "Plan",
+      "action": "decide",
+      "constraints": {
+        "resource": "unauthorized file access operation",
+        "spatial": "/srv/app/config",
+        "temporal": "always"
+      },
+      "context": "production",
+      "rationale": "When an unauthorized access is detected, a plan must be decided to block the operation and isolate the offending actor before execution."
+    },
+    {
+      "id": "P4.2",
+      "parent_id": "P4",
+      "level": "definitive",
+      "definer": "assurance engine",
+      "enforcer": "Plan",
+      "action": "decide",
+      "constraints": {
+        "resource": "file permission attributes",
+        "spatial": "/srv/app/config",
+        "temporal": "always"
+      },
+      "context": "production",
+      "rationale": "When permission drift is detected, a plan must be decided to restore the required permission baseline before execution."
+    },
+    {
+      "id": "P4.3",
+      "parent_id": "P4",
+      "level": "definitive",
+      "definer": "assurance engine",
+      "enforcer": "Plan",
+      "action": "decide",
+      "constraints": {
+        "resource": "modified file",
+        "spatial": "/srv/app/config",
+        "temporal": "always"
+      },
+      "context": "production",
+      "rationale": "When a checksum mismatch is detected, a plan must be decided to quarantine the modified file and trigger an alert before execution."
+    },
+    {
+      "id": "P4.1.1",
+      "parent_id": "P4.1",
+      "level": "imperative",
+      "definer": "assurance engine",
+      "enforcer": "Execute",
+      "action": "block",
+      "constraints": {
+        "resource": "unauthorized file access operation",
+        "spatial": "/srv/app/config",
+        "temporal": "always"
+      },
+      "context": "production",
+      "rationale": "The unauthorized access operation must be blocked immediately to prevent data exposure; fires when an access attempt by an actor not on the allowlist is observed."
+    },
+    {
+      "id": "P4.1.2",
+      "parent_id": "P4.1",
+      "level": "imperative",
+      "definer": "assurance engine",
+      "enforcer": "Execute",
+      "action": "revoke",
+      "constraints": {
+        "resource": "actor session token",
+        "spatial": "/srv/app/config",
+        "temporal": "always"
+      },
+      "context": "production",
+      "rationale": "The offending actor's session must be revoked to prevent further unauthorized attempts; fires after an unauthorized access is blocked."
+    },
+    {
+      "id": "P4.1.3",
+      "parent_id": "P4.1",
+      "level": "imperative",
+      "definer": "assurance engine",
+      "enforcer": "Execute",
+      "action": "alert",
+      "constraints": {
+        "resource": "security incident record",
+        "spatial": null,
+        "temporal": "always"
+      },
+      "context": "production",
+      "rationale": "An alert must be emitted so that operators are notified of the unauthorized access event; fires after the block action is executed."
+    },
+    {
+      "id": "P4.2.1",
+      "parent_id": "P4.2",
+      "level": "imperative",
+      "definer": "assurance engine",
+      "enforcer": "Execute",
+      "action": "restore",
+      "constraints": {
+        "resource": "file permission attributes",
+        "spatial": "/srv/app/config",
+        "temporal": "always"
+      },
+      "context": "production",
+      "rationale": "Drifted permissions must be restored to the required baseline to close the exposure window; fires when a permission attribute is found to deviate from the baseline."
+    },
+    {
+      "id": "P4.2.2",
+      "parent_id": "P4.2",
+      "level": "imperative",
+      "definer": "assurance engine",
+      "enforcer": "Execute",
+      "action": "alert",
+      "constraints": {
+        "resource": "permission drift record",
+        "spatial": null,
+        "temporal": "always"
+      },
+      "context": "production",
+      "rationale": "Operators must be notified of the permission drift event so it can be investigated; fires after the restore action is executed."
+    },
+    {
+      "id": "P4.3.1",
+      "parent_id": "P4.3",
+      "level": "imperative",
+      "definer": "assurance engine",
+      "enforcer": "Execute",
+      "action": "quarantine",
+      "constraints": {
+        "resource": "modified file",
+        "spatial": "/srv/app/config",
+        "temporal": "always"
+      },
+      "context": "production",
+      "rationale": "A file whose checksum does not match the baseline must be quarantined to prevent use of a potentially tampered artifact; fires when a checksum mismatch is detected."
+    },
+    {
+      "id": "P4.3.2",
+      "parent_id": "P4.3",
+      "level": "imperative",
+      "definer": "assurance engine",
+      "enforcer": "Execute",
+      "action": "alert",
+      "constraints": {
+        "resource": "integrity violation record",
+        "spatial": null,
+        "temporal": "always"
+      },
+      "context": "production",
+      "rationale": "Operators must be notified of the integrity violation so that forensic investigation and file restoration can be initiated; fires after the quarantine action is executed."
+    }
+  ]
+}

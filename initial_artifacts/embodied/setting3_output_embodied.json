@@ -1,0 +1,519 @@
+{
+  "intent": "Wipe the stovetop clean",
+  "policies": [
+    {
+      "id": "P0",
+      "parent_id": null,
+      "level": "declarative",
+      "definer": "human operator",
+      "enforcer": "Orchestrator",
+      "action": "clean",
+      "constraints": {
+        "resource": "stovetop surface",
+        "spatial": "kitchen stovetop",
+        "temporal": "always"
+      },
+      "context": "normal household operation",
+      "rationale": "Restates the raw intent as the root declarative policy: the robot must bring the stovetop surface to a clean state."
+    },
+    {
+      "id": "P1",
+      "parent_id": "P0",
+      "level": "definitive",
+      "definer": "assurance engine",
+      "enforcer": "Monitor",
+      "action": "assess",
+      "constraints": {
+        "resource": "stovetop surface",
+        "spatial": "kitchen stovetop",
+        "temporal": "always"
+      },
+      "context": "normal household operation",
+      "rationale": "Before cleaning can begin the robot must assess the current state of the stovetop to determine what contaminants, obstacles, or hazards are present."
+    },
+    {
+      "id": "P1.1",
+      "parent_id": "P1",
+      "level": "definitive",
+      "definer": "assurance engine",
+      "enforcer": "Monitor",
+      "action": "scan",
+      "constraints": {
+        "resource": "stovetop surface geometry and thermal map",
+        "spatial": "kitchen stovetop",
+        "temporal": "always"
+      },
+      "context": "normal household operation",
+      "rationale": "Scanning the surface with vision and thermal sensors captures the spatial layout of debris zones and identifies hot burner areas before any physical contact."
+    },
+    {
+      "id": "P1.2",
+      "parent_id": "P1",
+      "level": "definitive",
+      "definer": "assurance engine",
+      "enforcer": "Analyze",
+      "action": "classify",
+      "constraints": {
+        "resource": "detected surface regions",
+        "spatial": "kitchen stovetop",
+        "temporal": "always"
+      },
+      "context": "normal household operation",
+      "rationale": "Each detected region must be classified by type (grease, food residue, liquid spill, loose debris, hot zone) so that the correct cleaning method can be selected."
+    },
+    {
+      "id": "P1.3",
+      "parent_id": "P1",
+      "level": "definitive",
+      "definer": "assurance engine",
+      "enforcer": "Analyze",
+      "action": "detect",
+      "constraints": {
+        "resource": "burner temperature readings",
+        "spatial": "each burner on the stovetop",
+        "temporal": "always"
+      },
+      "context": "normal household operation",
+      "rationale": "Detecting whether any burner is active or above safe-contact temperature is a prerequisite safety check that gates all subsequent physical actions."
+    },
+    {
+      "id": "P2",
+      "parent_id": "P0",
+      "level": "definitive",
+      "definer": "assurance engine",
+      "enforcer": "Plan",
+      "action": "decide",
+      "constraints": {
+        "resource": "cleaning action sequence",
+        "spatial": "kitchen stovetop",
+        "temporal": "always"
+      },
+      "context": "normal household operation",
+      "rationale": "A plan must be decided that orders the cleaning sub-tasks (hazard mitigation, loose debris removal, wet wiping, drying) into a safe and complete sequence before execution begins."
+    },
+    {
+      "id": "P3",
+      "parent_id": "P0",
+      "level": "definitive",
+      "definer": "assurance engine",
+      "enforcer": "Monitor",
+      "action": "monitor",
+      "constraints": {
+        "resource": [
+          "burner temperature readings",
+          "robot arm force feedback",
+          "stovetop surface cleanliness state"
+        ],
+        "spatial": "kitchen stovetop",
+        "temporal": "always"
+      },
+      "context": "normal household operation",
+      "rationale": "Continuous monitoring of temperature, force, and surface state throughout execution is required to detect unsafe conditions and verify progress toward a clean stovetop."
+    },
+    {
+      "id": "P4",
+      "parent_id": "P1.3",
+      "level": "definitive",
+      "definer": "assurance engine",
+      "enforcer": "Plan",
+      "action": "decide",
+      "constraints": {
+        "resource": "burner safety status",
+        "spatial": "each burner on the stovetop",
+        "temporal": "always"
+      },
+      "context": "normal household operation",
+      "rationale": "Based on detected burner temperatures the plan must decide whether to proceed immediately, wait for cooling, or flag the burner as a no-contact zone before any wiping begins."
+    },
+    {
+      "id": "P4.1",
+      "parent_id": "P4",
+      "level": "imperative",
+      "definer": "assurance engine",
+      "enforcer": "Execute",
+      "action": "halt",
+      "constraints": {
+        "resource": "robot arm motion toward burner zone",
+        "spatial": "hot burner zone (surface temperature above safe threshold)",
+        "temporal": "always"
+      },
+      "context": "normal household operation",
+      "rationale": "Fires when a burner surface temperature exceeds the safe-contact threshold; halting arm motion prevents burns to the robot end-effector and avoids spreading heated contaminants."
+    },
+    {
+      "id": "P4.2",
+      "parent_id": "P4",
+      "level": "imperative",
+      "definer": "assurance engine",
+      "enforcer": "Execute",
+      "action": "flag",
+      "constraints": {
+        "resource": "burner zone region in task map",
+        "spatial": "hot burner zone",
+        "temporal": "always"
+      },
+      "context": "normal household operation",
+      "rationale": "Fires when a burner is confirmed above safe temperature; flagging the zone in the task map ensures the planner routes all wiping paths around it until it cools."
+    },
+    {
+      "id": "P5",
+      "parent_id": "P1.2",
+      "level": "definitive",
+      "definer": "assurance engine",
+      "enforcer": "Plan",
+      "action": "sequence",
+      "constraints": {
+        "resource": "cleaning sub-tasks per classified region",
+        "spatial": "stovetop surface zones (loose-debris, grease, liquid, safe-to-contact)",
+        "temporal": "always"
+      },
+      "context": "normal household operation",
+      "rationale": "Classified regions must be sequenced into ordered sub-tasks so that loose debris is removed before wet wiping, preventing smearing, and grease zones receive appropriate treatment."
+    },
+    {
+      "id": "P6",
+      "parent_id": "P5",
+      "level": "definitive",
+      "definer": "assurance engine",
+      "enforcer": "Plan",
+      "action": "plan",
+      "constraints": {
+        "resource": "loose debris (crumbs, food particles)",
+        "spatial": "loose-debris zones on stovetop",
+        "temporal": "always"
+      },
+      "context": "normal household operation",
+      "rationale": "Loose debris must be swept or brushed off before any wet cloth contacts the surface to prevent particles from being ground into the surface or smeared into grease."
+    },
+    {
+      "id": "P6.1",
+      "parent_id": "P6",
+      "level": "imperative",
+      "definer": "assurance engine",
+      "enforcer": "Execute",
+      "action": "position",
+      "constraints": {
+        "resource": "robot arm with dry brush or scraper end-effector",
+        "spatial": "edge of loose-debris zone on stovetop",
+        "temporal": "always"
+      },
+      "context": "normal household operation",
+      "rationale": "The arm must be positioned at the far edge of the debris zone so that the sweeping stroke moves debris toward the stovetop edge and into a collection area."
+    },
+    {
+      "id": "P6.2",
+      "parent_id": "P6",
+      "level": "imperative",
+      "definer": "assurance engine",
+      "enforcer": "Execute",
+      "action": "sweep",
+      "constraints": {
+        "resource": "loose debris",
+        "spatial": "loose-debris zone toward stovetop collection edge",
+        "temporal": "always"
+      },
+      "context": "normal household operation",
+      "rationale": "Fires after arm is positioned; executes a controlled lateral sweep stroke to consolidate and move loose debris off the active cooking surface."
+    },
+    {
+      "id": "P6.3",
+      "parent_id": "P6",
+      "level": "imperative",
+      "definer": "assurance engine",
+      "enforcer": "Execute",
+      "action": "collect",
+      "constraints": {
+        "resource": "swept debris",
+        "spatial": "stovetop collection edge or adjacent counter",
+        "temporal": "always"
+      },
+      "context": "normal household operation",
+      "rationale": "Fires after sweeping; collects consolidated debris into a receptacle so it does not fall back onto the stovetop or onto the floor."
+    },
+    {
+      "id": "P7",
+      "parent_id": "P5",
+      "level": "definitive",
+      "definer": "assurance engine",
+      "enforcer": "Plan",
+      "action": "plan",
+      "constraints": {
+        "resource": "grease and baked-on food residue",
+        "spatial": "grease and residue zones on stovetop",
+        "temporal": "always"
+      },
+      "context": "normal household operation",
+      "rationale": "Grease and baked-on residue require a wet cleaning agent and dwell time before wiping, which must be planned as a distinct sub-task sequence separate from loose debris removal."
+    },
+    {
+      "id": "P7.1",
+      "parent_id": "P7",
+      "level": "imperative",
+      "definer": "assurance engine",
+      "enforcer": "Execute",
+      "action": "select",
+      "constraints": {
+        "resource": "cleaning agent (food-safe degreaser or diluted dish soap)",
+        "spatial": "robot tool storage or dispenser",
+        "temporal": "always"
+      },
+      "context": "normal household operation",
+      "rationale": "A food-safe cleaning agent appropriate for grease must be selected from storage before application to ensure surface safety and cleaning efficacy."
+    },
+    {
+      "id": "P7.2",
+      "parent_id": "P7",
+      "level": "imperative",
+      "definer": "assurance engine",
+      "enforcer": "Execute",
+      "action": "apply",
+      "constraints": {
+        "resource": "cleaning agent",
+        "spatial": "grease and residue zones on stovetop",
+        "temporal": "always"
+      },
+      "context": "normal household operation",
+      "rationale": "Fires after agent selection; applies a controlled amount of cleaning agent to the grease zones to begin chemical breakdown of the residue before mechanical wiping."
+    },
+    {
+      "id": "P7.3",
+      "parent_id": "P7",
+      "level": "imperative",
+      "definer": "assurance engine",
+      "enforcer": "Execute",
+      "action": "dwell",
+      "constraints": {
+        "resource": "applied cleaning agent on grease zones",
+        "spatial": "grease and residue zones on stovetop",
+        "temporal": "30-second dwell window"
+      },
+      "context": "normal household operation",
+      "rationale": "Fires after agent application; pausing for a dwell period allows the cleaning agent to chemically loosen grease before mechanical wiping, reducing required scrub force."
+    },
+    {
+      "id": "P7.4",
+      "parent_id": "P7",
+      "level": "imperative",
+      "definer": "assurance engine",
+      "enforcer": "Execute",
+      "action": "scrub",
+      "constraints": {
+        "resource": "grease and baked-on residue",
+        "spatial": "grease and residue zones on stovetop",
+        "temporal": "always"
+      },
+      "context": "normal household operation",
+      "rationale": "Fires after dwell; applies controlled circular or linear scrubbing motion with a damp cloth or sponge end-effector to mechanically lift loosened grease from the surface."
+    },
+    {
+      "id": "P8",
+      "parent_id": "P5",
+      "level": "definitive",
+      "definer": "assurance engine",
+      "enforcer": "Plan",
+      "action": "plan",
+      "constraints": {
+        "resource": "liquid spills on stovetop",
+        "spatial": "liquid-spill zones on stovetop",
+        "temporal": "always"
+      },
+      "context": "normal household operation",
+      "rationale": "Liquid spills require blotting before wiping to prevent spreading, and must be planned as a distinct sub-task to avoid enlarging the contaminated area."
+    },
+    {
+      "id": "P8.1",
+      "parent_id": "P8",
+      "level": "imperative",
+      "definer": "assurance engine",
+      "enforcer": "Execute",
+      "action": "blot",
+      "constraints": {
+        "resource": "liquid spill",
+        "spatial": "liquid-spill zones on stovetop",
+        "temporal": "always"
+      },
+      "context": "normal household operation",
+      "rationale": "Fires when a liquid spill zone is reached; blotting absorbs bulk liquid before wiping to prevent spreading the spill across clean areas of the stovetop."
+    },
+    {
+      "id": "P8.2",
+      "parent_id": "P8",
+      "level": "imperative",
+      "definer": "assurance engine",
+      "enforcer": "Execute",
+      "action": "wipe",
+      "constraints": {
+        "resource": "residual liquid and dissolved contaminants",
+        "spatial": "liquid-spill zones on stovetop",
+        "temporal": "always"
+      },
+      "context": "normal household operation",
+      "rationale": "Fires after blotting; wipes the residual moisture and dissolved contaminants from the zone using a clean damp cloth in inward strokes to avoid re-contaminating adjacent areas."
+    },
+    {
+      "id": "P9",
+      "parent_id": "P5",
+      "level": "definitive",
+      "definer": "assurance engine",
+      "enforcer": "Plan",
+      "action": "plan",
+      "constraints": {
+        "resource": "entire stovetop surface after zone cleaning",
+        "spatial": "kitchen stovetop",
+        "temporal": "always"
+      },
+      "context": "normal household operation",
+      "rationale": "After all zone-specific cleaning sub-tasks are complete, a final full-surface wipe and dry pass must be planned to achieve a uniformly clean and streak-free result."
+    },
+    {
+      "id": "P9.1",
+      "parent_id": "P9",
+      "level": "imperative",
+      "definer": "assurance engine",
+      "enforcer": "Execute",
+      "action": "wipe",
+      "constraints": {
+        "resource": "stovetop surface",
+        "spatial": "full stovetop surface (safe-to-contact zones only)",
+        "temporal": "always"
+      },
+      "context": "normal household operation",
+      "rationale": "Fires after all zone sub-tasks complete; executes a systematic overlapping wipe pattern across the full safe surface to remove any remaining residue and cleaning agent."
+    },
+    {
+      "id": "P9.2",
+      "parent_id": "P9",
+      "level": "imperative",
+      "definer": "assurance engine",
+      "enforcer": "Execute",
+      "action": "dry",
+      "constraints": {
+        "resource": "stovetop surface moisture",
+        "spatial": "full stovetop surface",
+        "temporal": "always"
+      },
+      "context": "normal household operation",
+      "rationale": "Fires after the final wipe; drying the surface with a clean dry cloth removes residual moisture to prevent water spots and leave the stovetop in a clean, dry state."
+    },
+    {
+      "id": "P10",
+      "parent_id": "P0",
+      "level": "definitive",
+      "definer": "assurance engine",
+      "enforcer": "Analyze",
+      "action": "evaluate",
+      "constraints": {
+        "resource": "stovetop surface cleanliness state",
+        "spatial": "kitchen stovetop",
+        "temporal": "always"
+      },
+      "context": "normal household operation",
+      "rationale": "After execution the surface must be evaluated against a cleanliness criterion to confirm the intent has been satisfied or to identify zones requiring a repeat cleaning pass."
+    },
+    {
+      "id": "P10.1",
+      "parent_id": "P10",
+      "level": "definitive",
+      "definer": "assurance engine",
+      "enforcer": "Analyze",
+      "action": "compare",
+      "constraints": {
+        "resource": "post-cleaning surface scan",
+        "spatial": "kitchen stovetop",
+        "temporal": "always"
+      },
+      "context": "normal household operation",
+      "rationale": "The post-cleaning surface scan is compared against the cleanliness threshold to produce a pass or fail verdict for each surface zone."
+    },
+    {
+      "id": "P10.2",
+      "parent_id": "P10",
+      "level": "definitive",
+      "definer": "assurance engine",
+      "enforcer": "Plan",
+      "action": "decide",
+      "constraints": {
+        "resource": "failed surface zones",
+        "spatial": "stovetop zones below cleanliness threshold",
+        "temporal": "always"
+      },
+      "context": "normal household operation",
+      "rationale": "For any zone that fails the cleanliness comparison, the planner must decide whether to trigger a repeat cleaning pass or escalate to the human operator."
+    },
+    {
+      "id": "P10.2.1",
+      "parent_id": "P10.2",
+      "level": "imperative",
+      "definer": "assurance engine",
+      "enforcer": "Execute",
+      "action": "retry",
+      "constraints": {
+        "resource": "cleaning action sequence for failed zone",
+        "spatial": "stovetop zone below cleanliness threshold",
+        "temporal": "always"
+      },
+      "context": "normal household operation",
+      "rationale": "Fires when a zone fails the cleanliness check and a retry is within the allowed attempt count; re-executes the appropriate cleaning sub-task for that zone."
+    },
+    {
+      "id": "P10.2.2",
+      "parent_id": "P10.2",
+      "level": "imperative",
+      "definer": "assurance engine",
+      "enforcer": "Execute",
+      "action": "notify",
+      "constraints": {
+        "resource": "human operator alert with zone failure details",
+        "spatial": null,
+        "temporal": "always"
+      },
+      "context": "normal household operation",
+      "rationale": "Fires when retry attempts are exhausted or the zone cannot be cleaned safely by the robot; notifying the human operator ensures the task is completed without leaving the stovetop in a degraded state."
+    },
+    {
+      "id": "P11",
+      "parent_id": "P3",
+      "level": "definitive",
+      "definer": "assurance engine",
+      "enforcer": "Analyze",
+      "action": "compare",
+      "constraints": {
+        "resource": "robot arm force feedback readings",
+        "spatial": "robot end-effector contact point on stovetop",
+        "temporal": "always"
+      },
+      "context": "normal household operation",
+      "rationale": "Force feedback must be compared against safe contact-force limits throughout execution to detect unexpected resistance that could indicate a fragile surface feature or an obstacle."
+    },
+    {
+      "id": "P11.1",
+      "parent_id": "P11",
+      "level": "imperative",
+      "definer": "assurance engine",
+      "enforcer": "Execute",
+      "action": "retract",
+      "constraints": {
+        "resource": "robot arm",
+        "spatial": "contact point where force limit is exceeded",
+        "temporal": "always"
+      },
+      "context": "normal household operation",
+      "rationale": "Fires when measured contact force exceeds the safe threshold; retracting the arm immediately prevents damage to the stovetop surface or the robot end-effector."
+    },
+    {
+      "id": "P11.2",
+      "parent_id": "P11",
+      "level": "imperative",
+      "definer": "assurance engine",
+      "enforcer": "Execute",
+      "action": "flag",
+      "constraints": {
+        "resource": "obstacle or fragile-feature region in task map",
+        "spatial": "contact point where force limit was exceeded",
+        "temporal": "always"
+      },
+      "context": "normal household operation",
+      "rationale": "Fires after arm retraction; flags the location in the task map so the planner reroutes subsequent wipe strokes around the anomalous region."
+    }
+  ]
+}
