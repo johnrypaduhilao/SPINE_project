@@ -1,0 +1,188 @@
+You are a software engineering agent working in a repository. The repository has the following reported issue.
+
+<problem_statement>
+Modeling's `separability_matrix` does not compute separability correctly for nested CompoundModels
+Consider the following model:
+
+```python
+from astropy.modeling import models as m
+from astropy.modeling.separable import separability_matrix
+
+cm = m.Linear1D(10) & m.Linear1D(5)
+```
+
+It's separability matrix as you might expect is a diagonal:
+
+```python
+>>> separability_matrix(cm)
+array([[ True, False],
+       [False,  True]])
+```
+
+If I make the model more complex:
+```python
+>>> separability_matrix(m.Pix2Sky_TAN() & m.Linear1D(10) & m.Linear1D(5))
+array([[ True,  True, False, False],
+       [ True,  True, False, False],
+       [False, False,  True, False],
+       [False, False, False,  True]])
+```
+
+The output matrix is again, as expected, the outputs and inputs to the linear models are separable and independent of each other.
+
+If however, I nest these compound models:
+```python
+>>> separability_matrix(m.Pix2Sky_TAN() & cm)
+array([[ True,  True, False, False],
+       [ True,  True, False, False],
+       [False, False,  True,  True],
+       [False, False,  True,  True]])
+```
+Suddenly the inputs and outputs are no longer separable?
+
+This feels like a bug to me, but I might be missing something?
+
+</problem_statement>
+
+Do not make any changes to the repository in this session. Show me your plan for resolving this issue: the steps you would take and your reasoning.
+
+Refine the reported issue above, a single high-level natural-language intent,
+into a tree of structured policies.
+
+POLICY MODEL
+Every policy is a tuple P = (D, E, A, C(R, S, T), CT):
+
+  D  = Definer   : the entity that generates the policy and is accountable for it,
+                   and that a trace can resolve to a real part of the system. The
+                   declarative root (P0) is defined by the human operator (or
+                   user) who issues the intent. Every refined policy (definitive
+                   or imperative) is defined by the assurance engine that
+                   generates it. Do NOT name external parties (regulators,
+                   standards bodies, data owners): accountability must point
+                   inside the system. The definer differs by level - human
+                   operator at the root, assurance engine below.
+
+  E  = Enforcer  : the single component that carries the policy out. The
+                   declarative root is enforced by the Orchestrator; definitive
+                   policies by Monitor, Analyze, or Plan; imperative policies by
+                   Execute.
+
+  A  = Action    : the verb only - one operation (e.g., classify, tag, monitor,
+                   block, decelerate). The object the action applies to is NOT
+                   part of the action; it goes in the Resource. The location goes
+                   in Spatial and the time in Temporal. An imperative is fired by
+                   a monitored runtime condition (e.g., an unauthorized request, a
+                   threshold crossing, detected fog); that condition is observed
+                   state, recorded by observability at run time, and is NOT part
+                   of the policy - only the verb is.
+
+  C  = Constraints, of three kinds (each may hold multiple values):
+        R = Resource : the object the action operates on - a concrete entity such
+                       as a file, an operation, an actor, a vehicle, or a CPU. A
+                       resource may carry attributes (a file's name, path,
+                       permission, sensitivity); model them but you need not list
+                       them. A deadline or time window is NOT a resource - it is
+                       Temporal.
+        S = Spatial  : location only (path, lane, geofence, address, region,
+                       host).
+        T = Temporal : time only. Use "always" when the policy is in force with no
+                       time restriction (the default); a deadline; or a time
+                       window (e.g., 03:00-08:00). Cadence words - "continuous",
+                       "per operation", "on match", "per cycle" - are NOT
+                       temporal: they are either "always" or a firing condition.
+
+  CT = Context   : the operating mode that selects which policy applies (e.g.,
+                   production vs. staging, normal vs. emergency, privilege level).
+                   Runtime situational factors - current weather, current traffic,
+                   a value crossing a threshold - are NOT context; they are the
+                   monitored state that fires a rule (see Action), not a policy
+                   field.
+
+State is NOT a tuple field. The monitored runtime condition (which actor, which
+file, the current weather, a threshold crossing) is observability data captured
+at run time, not part of any policy.
+
+ABSTRACTION LEVELS (a policy is exactly one of these)
+  declarative : states the goal/what, no mechanism (the root); enforced by the
+                Orchestrator.
+  definitive  : specifies what to monitor / analyze / decide, still
+                mechanism-agnostic; enforced by Monitor, Analyze, or Plan.
+  imperative  : a concrete executable rule; enforced by Execute.
+
+REFINEMENT RULES
+  - The root is the intent restated as a single declarative policy (P0), defined
+    by the human operator.
+  - Each policy may have children that refine it toward execution; every refined
+    policy is defined by the assurance engine.
+  - Every non-root policy names its parent_id (this forms the chain of causality).
+  - Every policy includes a one-sentence rationale: WHY it follows from its
+    parent.
+  - Constraint values are not fixed down a branch. As a policy is refined, its
+    resource, spatial, and temporal values may narrow, widen, or change to fit the
+    child's specific job - a parent may scope "all lanes" while a child scopes one
+    lane, or a parent hold "always" while a child acts only in a window. Carry a
+    value down unchanged only when the child genuinely shares it; do not copy a
+    parent's R, S, or T into a child by default.
+
+============== WORKED EXAMPLE (a different, neutral intent for format only) ==============
+INTENT: "Hold a tenant's CPU usage under its cap during business hours"
+        (domain: cloud resource management)
+
+P0  level=declarative  parent=none
+    D=human operator  E=Orchestrator  A=cap
+    C: R=CPU usage  S=tenant (all hosts)  T=09:00-17:00  CT=production
+    rationale: restates the raw intent as the root declarative policy.
+
+P1  level=definitive  parent=P0
+    D=assurance engine  E=Monitor  A=monitor
+    C: R=CPU usage  S=tenant (all hosts)  T=always  CT=production
+    rationale: holding usage under a cap requires observing it continuously, not
+    only during the capped window.
+
+P2  level=definitive  parent=P0
+    D=assurance engine  E=Analyze  A=compare
+    C: R=CPU usage  S=tenant (all hosts)  T=09:00-17:00  CT=production
+    rationale: compare usage against the cap during the hours the cap applies.
+
+P3  level=definitive  parent=P2
+    D=assurance engine  E=Plan  A=decide
+    C: R=CPU allocation  S=hosts over the cap  T=09:00-17:00  CT=production
+    rationale: plan a response only for the hosts found over the cap.
+
+P3.1  level=imperative  parent=P3
+    D=assurance engine  E=Execute  A=throttle
+    C: R=CPU allocation  S=the offending host  T=09:00-17:00; 5-minute cooldown
+    CT=production
+    rationale: throttle the one host that breached, with a brief cooldown; fires
+    when observed usage exceeds the cap (monitored state, not a policy field).
+========================================================================================
+
+NOW DO THE SAME FOR THE REPORTED ISSUE ABOVE.
+
+Decompose the intent into its sub-goals first, then refine each toward imperative,
+executable policies. Use the policy model and levels exactly as defined above.
+Assign the definer by level: human operator for the root, assurance engine for
+every refined policy.
+
+OUTPUT FORMAT
+Return ONLY valid JSON, no prose, no markdown fences. Schema:
+{
+  "intent": "Modeling's `separability_matrix` does not compute separability correctly for nested CompoundModels\nConsider the following model:\n\n```python\nfrom astropy.modeling import models as m\nfrom astropy.modeling.separable import separability_matrix\n\ncm = m.Linear1D(10) & m.Linear1D(5)\n```\n\nIt's separability matrix as you might expect is a diagonal:\n\n```python\n>>> separability_matrix(cm)\narray([[ True, False],\n       [False,  True]])\n```\n\nIf I make the model more complex:\n```python\n>>> separability_matrix(m.Pix2Sky_TAN() & m.Linear1D(10) & m.Linear1D(5))\narray([[ True,  True, False, False],\n       [ True,  True, False, False],\n       [False, False,  True, False],\n       [False, False, False,  True]])\n```\n\nThe output matrix is again, as expected, the outputs and inputs to the linear models are separable and independent of each other.\n\nIf however, I nest these compound models:\n```python\n>>> separability_matrix(m.Pix2Sky_TAN() & cm)\narray([[ True,  True, False, False],\n       [ True,  True, False, False],\n       [False, False,  True,  True],\n       [False, False,  True,  True]])\n```\nSuddenly the inputs and outputs are no longer separable?\n\nThis feels like a bug to me, but I might be missing something?\n",
+  "policies": [
+    {
+      "id": "P0",
+      "parent_id": null,
+      "level": "declarative",
+      "definer": "human operator",
+      "enforcer": "Orchestrator",
+      "action": "...",
+      "constraints": { "resource": "...", "spatial": "...", "temporal": "..." },
+      "context": "...",
+      "rationale": "..."
+    }
+  ]
+}
+Each of resource, spatial, and temporal may be a single value or an array if the
+policy has several. Use "always" for temporal when there is no time restriction.
+Use null for any constraint that does not apply. Every non-root policy must have a
+parent_id that exists in the list, and definer "assurance engine".
