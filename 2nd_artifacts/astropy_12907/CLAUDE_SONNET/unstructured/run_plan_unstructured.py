@@ -21,7 +21,8 @@ import time
 
 OUT_DIR = "outputs"
 TEMPERATURE = 0
-MAX_TOKENS = 8000          # same ceiling as run 1, all plan cells
+MAX_TOKENS = 16000         # raised from 8000: reasoning-tier models spend
+                           # hidden tokens inside the completion budget
 SCHEMA_VERSION = "plan_unstructured/2"
 
 DEFAULT_MODEL = {

@@ -18,12 +18,14 @@ import argparse
 import hashlib
 import json
 import os
+import re
 import sys
 import time
 
 OUT_DIR = "outputs"
 TEMPERATURE = 0
-MAX_TOKENS = 8000          # same ceiling as run 1, all plan cells
+MAX_TOKENS = 16000         # raised from 8000: reasoning-tier models spend
+                           # hidden tokens inside the completion budget
 SCHEMA_VERSION = "plan_trajectory/2"
 
 DEFAULT_MODEL = {
@@ -178,10 +180,9 @@ def stream_call(prompt, provider, model):
 def parse_steps(text):
     """Best-effort parse. The RAW text is what gets stored either way."""
     body = text.strip()
-    if body.startswith("```"):
-        body = body.split("```")[1]
-        if body.lstrip().lower().startswith("json"):
-            body = body.lstrip()[4:]
+    m = re.search(r"```(?:json)?\s*\n", body)
+    if m and body.rfind("```") > m.end():
+        body = body[m.end(): body.rfind("```")]
     body = body.strip()
     try:
         steps = json.loads(body)
