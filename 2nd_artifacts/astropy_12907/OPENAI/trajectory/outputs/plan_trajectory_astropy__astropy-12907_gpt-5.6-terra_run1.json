@@ -112,10 +112,10 @@
     "with_thought": 8,
     "with_expected_observation": 8,
     "action_names": {
-      "edit_file": 2,
       "search_repo": 2,
       "open_file": 3,
-      "done": 1
+      "done": 1,
+      "edit_file": 2
     },
     "off_vocabulary_actions": [],
     "has_parent_field": false,
@@ -134,5 +134,6 @@
     "spatial": 0,
     "temporal": 0,
     "resource": 0
-  }
+  },
+  "mechanical_fields_recomputed": true
 }

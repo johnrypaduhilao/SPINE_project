@@ -197,5 +197,6 @@
     },
     "problems": []
   },
-  "wall_s": 16.25
+  "wall_s": 16.25,
+  "mechanical_fields_recomputed": true
 }
