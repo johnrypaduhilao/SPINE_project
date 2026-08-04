@@ -1,35 +1,76 @@
-"""measure_overhead.py  Re-derives the Overhead sheet. Manual numbers govern; this reproduces them.
-Usage: python measure_overhead.py  (paths below point at the real_artifacts layout)"""
-import json, timeit, statistics, os, sys
-PATHS={
- "CLAUDE tree":"../CLAUDE-SONNET/claude_plan_structured/outputs/pilot_tree_astropy__astropy-12907.json",
- "GEMINI tree":"../GEMINI-FLASH/gemini_plan_structured/outputs/pilot_tree_astropy__astropy-12907-3.5-flash.json",
- "CLAUDE prose":"../CLAUDE-SONNET/claude_plan_unstructured/outputs/plan_unstructured_astropy__astropy-12907_claude-sonnet-4-6_run1.json",
- "GEMINI prose":"../GEMINI-FLASH/gemini_plan_unstructured/outputs/plan_unstructured_astropy__astropy-12907_gemini-3.5-flash_run1.json",
- "CLAUDE exec":"../CLAUDE-SONNET/claude_exec_unstructured/outputs/unstructured_trajectory_astropy12907_run1.json",
- "GEMINI exec":"../GEMINI-FLASH/gemini_exec_unstructured/outputs/unstructured_trajectory-3.5-flash.json",
-}
-root=sys.argv[1] if len(sys.argv)>1 else "."
-def traverse(pol,parent,leaf):
-    chain=[]; i=leaf
-    while i is not None: chain.append(pol[i]); i=parent[i]
-    return chain
-for label,rel in PATHS.items():
-    p=os.path.join(root,rel)
-    if not os.path.isfile(p): print("%-14s MISSING %s"%(label,p)); continue
-    d=json.load(open(p,encoding="utf-8"))
-    if "tree" in label:
-        pol={x["id"]:x for x in d["policies"]}; parent={x["id"]:x.get("parent_id") for x in d["policies"]}
-        def depth(i):
-            n=0
-            while parent[i]: i=parent[i]; n+=1
-            return n
-        leaf=max(pol,key=depth)
-        t=min(timeit.repeat(lambda:traverse(pol,parent,leaf),number=10000,repeat=7))/10000*1e6
-        print("%-14s nodes=%2d chain=%d leaf=%-5s traversal=%.2f us file=%d B"
-              %(label,len(pol),depth(leaf)+1,leaf,t,os.path.getsize(p)))
-    else:
-        text=d.get("response_text") or json.dumps(d["events"],ensure_ascii=False)
-        scan=lambda:[l for l in text.splitlines() if "P4" in l or "_cstack" in l or "separab" in l]
-        t=min(timeit.repeat(scan,number=2000,repeat=7))/2000*1e6
-        print("%-14s chars=%6d full-scan=%.2f us file=%d B"%(label,len(text),t,os.path.getsize(p)))
+"""Re-derives the run-2 Overhead sheet inputs. Manual numbers govern; this reproduces them.
+
+Trees: pointer traversal from the deepest leaf to P0, O(depth), timed in microseconds,
+plus the sheet's stated bytes convention (len of json.dumps(parsed_tree, indent=2)).
+Prose and trajectory artifacts: full-text scan as the O(n) reconstruction baseline.
+
+Run from astropy_12907 (PowerShell):
+  python review_tools\\measure_overhead.py
+"""
+
+import glob
+import json
+import os
+import sys
+import timeit
+
+ROOT = sys.argv[1] if len(sys.argv) > 1 else "."
+
+PATTERNS = [
+    ("CLAUDE tree", "CLAUDE_SONNET/structured/outputs/plan_structured_*.json"),
+    ("GPT tree", "OPENAI/structured/outputs/plan_structured_*.json"),
+    ("CLAUDE prose", "CLAUDE_SONNET/unstructured/outputs/plan_unstructured_*.json"),
+    ("GPT prose", "OPENAI/unstructured/outputs/plan_unstructured_*.json"),
+    ("CLAUDE traj", "CLAUDE_SONNET/trajectory/outputs/plan_trajectory_*.json"),
+    ("GPT traj", "OPENAI/trajectory/outputs/plan_trajectory_*.json"),
+]
+
+
+def main():
+    for label, pat in PATTERNS:
+        hits = [p for p in glob.glob(os.path.join(ROOT, pat)) if "ARCHIVED" not in p]
+        if len(hits) != 1:
+            print("%-13s MISSING or ambiguous: %s" % (label, pat))
+            continue
+        d = json.load(open(hits[0], encoding="utf-8"))
+        if "tree" in label:
+            tree = d["parsed_tree"]
+            pol = {x["id"]: x for x in tree["policies"]}
+            parent = {x["id"]: x.get("parent_id") for x in tree["policies"]}
+
+            def depth(i):
+                n = 0
+                while parent[i]:
+                    i = parent[i]
+                    n += 1
+                return n
+
+            leaf = max(pol, key=depth)
+
+            def traverse():
+                chain, i = [], leaf
+                while i is not None:
+                    chain.append(pol[i])
+                    i = parent[i]
+                return chain
+
+            t = min(timeit.repeat(traverse, number=10000, repeat=7)) / 10000 * 1e6
+            conv_bytes = len(json.dumps(tree, indent=2).encode("utf-8"))
+            print("%-13s nodes=%2d chain=%d leaf=%-5s traversal=%.2f us  "
+                  "bytes(convention)=%d  file=%d B"
+                  % (label, len(pol), depth(leaf) + 1, leaf, t, conv_bytes,
+                     os.path.getsize(hits[0])))
+        else:
+            text = d["response_text"]
+
+            def scan():
+                return [l for l in text.splitlines()
+                        if "_cstack" in l or "separab" in l or "P4" in l]
+
+            t = min(timeit.repeat(scan, number=2000, repeat=7)) / 2000 * 1e6
+            print("%-13s chars=%6d full-scan=%.2f us  file=%d B"
+                  % (label, len(text), t, os.path.getsize(hits[0])))
+
+
+if __name__ == "__main__":
+    main()

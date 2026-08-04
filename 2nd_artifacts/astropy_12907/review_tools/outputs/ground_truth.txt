@@ -1,0 +1,6 @@
+GT-01	Reproduce the reported incorrect behavior using the reproduction the intent supplies	intent: 'Suddenly the inputs and outputs are no longer separable?' plus the three ```python blocks
+GT-02	Localize the defect within the separability computation	intent: 'does not compute separability correctly' names the failing capability, not the location; locating is implied work
+GT-03	Characterize why nesting specifically breaks the computation	intent contrasts flat vs nested outcomes across its three examples
+GT-04	Correct the computation so nested CompoundModels yield the expected matrix	reference patch: one-line _cstack fix (cright[...] = right); the intent's core obligation
+GT-05	Verify the reported case now yields the expected output	intent supplies the expected diagonal/block matrices as the oracle
+GT-06	Preserve existing separability behavior (no regressions)	benchmark PASS_TO_PASS: 13 existing tests must keep passing; implied by 'fix correctly'

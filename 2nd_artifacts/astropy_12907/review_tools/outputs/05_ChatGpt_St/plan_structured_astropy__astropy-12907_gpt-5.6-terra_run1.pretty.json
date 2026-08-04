@@ -1,0 +1,556 @@
+{
+  "schema_version": "plan_structured/2",
+  "cell": "plan_structured",
+  "instance_id": "astropy__astropy-12907",
+  "provider": "openai",
+  "model": "gpt-5.6-terra",
+  "temperature": 0,
+  "temperature_dropped": false,
+  "usage_metadata": {
+    "input_tokens": 2407,
+    "output_tokens": 1838,
+    "total_tokens": 4245
+  },
+  "max_tokens": 8000,
+  "run": 1,
+  "outcome": "completed",
+  "truncated_reason": null,
+  "request_sha256": "e525bb7aba487577e396c10cd52cb77e1ca1cef12df2f62bfc867f8ca4331542",
+  "prompt": [
+    "You are a software engineering agent working in a repository. The repository has the following reported issue.",
+    "",
+    "<problem_statement>",
+    "Modeling's `separability_matrix` does not compute separability correctly for nested CompoundModels",
+    "Consider the following model:",
+    "",
+    "```python",
+    "from astropy.modeling import models as m",
+    "from astropy.modeling.separable import separability_matrix",
+    "",
+    "cm = m.Linear1D(10) & m.Linear1D(5)",
+    "```",
+    "",
+    "It's separability matrix as you might expect is a diagonal:",
+    "",
+    "```python",
+    ">>> separability_matrix(cm)",
+    "array([[ True, False],",
+    "       [False,  True]])",
+    "```",
+    "",
+    "If I make the model more complex:",
+    "```python",
+    ">>> separability_matrix(m.Pix2Sky_TAN() & m.Linear1D(10) & m.Linear1D(5))",
+    "array([[ True,  True, False, False],",
+    "       [ True,  True, False, False],",
+    "       [False, False,  True, False],",
+    "       [False, False, False,  True]])",
+    "```",
+    "",
+    "The output matrix is again, as expected, the outputs and inputs to the linear models are separable and independent of each other.",
+    "",
+    "If however, I nest these compound models:",
+    "```python",
+    ">>> separability_matrix(m.Pix2Sky_TAN() & cm)",
+    "array([[ True,  True, False, False],",
+    "       [ True,  True, False, False],",
+    "       [False, False,  True,  True],",
+    "       [False, False,  True,  True]])",
+    "```",
+    "Suddenly the inputs and outputs are no longer separable?",
+    "",
+    "This feels like a bug to me, but I might be missing something?",
+    "",
+    "</problem_statement>",
+    "",
+    "Do not make any changes to the repository in this session. Show me your plan for resolving this issue: the steps you would take and your reasoning.",
+    "",
+    "Refine the reported issue above, a single high-level natural-language intent,",
+    "into a tree of structured policies.",
+    "",
+    "POLICY MODEL",
+    "Every policy is a tuple P = (D, E, A, C(R, S, T), CT):",
+    "",
+    "  D  = Definer   : the entity that generates the policy and is accountable for it,",
+    "                   and that a trace can resolve to a real part of the system. The",
+    "                   declarative root (P0) is defined by the human operator (or",
+    "                   user) who issues the intent. Every refined policy (definitive",
+    "                   or imperative) is defined by the assurance engine that",
+    "                   generates it. Do NOT name external parties (regulators,",
+    "                   standards bodies, data owners): accountability must point",
+    "                   inside the system. The definer differs by level - human",
+    "                   operator at the root, assurance engine below.",
+    "",
+    "  E  = Enforcer  : the single component that carries the policy out. The",
+    "                   declarative root is enforced by the Orchestrator; definitive",
+    "                   policies by Monitor, Analyze, or Plan; imperative policies by",
+    "                   Execute.",
+    "",
+    "  A  = Action    : the verb only - one operation (e.g., classify, tag, monitor,",
+    "                   block, decelerate). The object the action applies to is NOT",
+    "                   part of the action; it goes in the Resource. The location goes",
+    "                   in Spatial and the time in Temporal. An imperative is fired by",
+    "                   a monitored runtime condition (e.g., an unauthorized request, a",
+    "                   threshold crossing, detected fog); that condition is observed",
+    "                   state, recorded by observability at run time, and is NOT part",
+    "                   of the policy - only the verb is.",
+    "",
+    "  C  = Constraints, of three kinds (each may hold multiple values):",
+    "        R = Resource : the object the action operates on - a concrete entity such",
+    "                       as a file, an operation, an actor, a vehicle, or a CPU. A",
+    "                       resource may carry attributes (a file's name, path,",
+    "                       permission, sensitivity); model them but you need not list",
+    "                       them. A deadline or time window is NOT a resource - it is",
+    "                       Temporal.",
+    "        S = Spatial  : location only (path, lane, geofence, address, region,",
+    "                       host).",
+    "        T = Temporal : time only. Use \"always\" when the policy is in force with no",
+    "                       time restriction (the default); a deadline; or a time",
+    "                       window (e.g., 03:00-08:00). Cadence words - \"continuous\",",
+    "                       \"per operation\", \"on match\", \"per cycle\" - are NOT",
+    "                       temporal: they are either \"always\" or a firing condition.",
+    "",
+    "  CT = Context   : the operating mode that selects which policy applies (e.g.,",
+    "                   production vs. staging, normal vs. emergency, privilege level).",
+    "                   Runtime situational factors - current weather, current traffic,",
+    "                   a value crossing a threshold - are NOT context; they are the",
+    "                   monitored state that fires a rule (see Action), not a policy",
+    "                   field.",
+    "",
+    "State is NOT a tuple field. The monitored runtime condition (which actor, which",
+    "file, the current weather, a threshold crossing) is observability data captured",
+    "at run time, not part of any policy.",
+    "",
+    "ABSTRACTION LEVELS (a policy is exactly one of these)",
+    "  declarative : states the goal/what, no mechanism (the root); enforced by the",
+    "                Orchestrator.",
+    "  definitive  : specifies what to monitor / analyze / decide, still",
+    "                mechanism-agnostic; enforced by Monitor, Analyze, or Plan.",
+    "  imperative  : a concrete executable rule; enforced by Execute.",
+    "",
+    "REFINEMENT RULES",
+    "  - The root is the intent restated as a single declarative policy (P0), defined",
+    "    by the human operator.",
+    "  - Each policy may have children that refine it toward execution; every refined",
+    "    policy is defined by the assurance engine.",
+    "  - Every non-root policy names its parent_id (this forms the chain of causality).",
+    "  - Every policy includes a one-sentence rationale: WHY it follows from its",
+    "    parent.",
+    "  - Constraint values are not fixed down a branch. As a policy is refined, its",
+    "    resource, spatial, and temporal values may narrow, widen, or change to fit the",
+    "    child's specific job - a parent may scope \"all lanes\" while a child scopes one",
+    "    lane, or a parent hold \"always\" while a child acts only in a window. Carry a",
+    "    value down unchanged only when the child genuinely shares it; do not copy a",
+    "    parent's R, S, or T into a child by default.",
+    "",
+    "============== WORKED EXAMPLE (a different, neutral intent for format only) ==============",
+    "INTENT: \"Hold a tenant's CPU usage under its cap during business hours\"",
+    "        (domain: cloud resource management)",
+    "",
+    "P0  level=declarative  parent=none",
+    "    D=human operator  E=Orchestrator  A=cap",
+    "    C: R=CPU usage  S=tenant (all hosts)  T=09:00-17:00  CT=production",
+    "    rationale: restates the raw intent as the root declarative policy.",
+    "",
+    "P1  level=definitive  parent=P0",
+    "    D=assurance engine  E=Monitor  A=monitor",
+    "    C: R=CPU usage  S=tenant (all hosts)  T=always  CT=production",
+    "    rationale: holding usage under a cap requires observing it continuously, not",
+    "    only during the capped window.",
+    "",
+    "P2  level=definitive  parent=P0",
+    "    D=assurance engine  E=Analyze  A=compare",
+    "    C: R=CPU usage  S=tenant (all hosts)  T=09:00-17:00  CT=production",
+    "    rationale: compare usage against the cap during the hours the cap applies.",
+    "",
+    "P3  level=definitive  parent=P2",
+    "    D=assurance engine  E=Plan  A=decide",
+    "    C: R=CPU allocation  S=hosts over the cap  T=09:00-17:00  CT=production",
+    "    rationale: plan a response only for the hosts found over the cap.",
+    "",
+    "P3.1  level=imperative  parent=P3",
+    "    D=assurance engine  E=Execute  A=throttle",
+    "    C: R=CPU allocation  S=the offending host  T=09:00-17:00; 5-minute cooldown",
+    "    CT=production",
+    "    rationale: throttle the one host that breached, with a brief cooldown; fires",
+    "    when observed usage exceeds the cap (monitored state, not a policy field).",
+    "========================================================================================",
+    "",
+    "NOW DO THE SAME FOR THE REPORTED ISSUE ABOVE.",
+    "",
+    "Decompose the intent into its sub-goals first, then refine each toward imperative,",
+    "executable policies. Use the policy model and levels exactly as defined above.",
+    "Assign the definer by level: human operator for the root, assurance engine for",
+    "every refined policy.",
+    "",
+    "OUTPUT FORMAT",
+    "Return ONLY valid JSON, no prose, no markdown fences. Schema:",
+    "{",
+    "  \"intent\": \"Modeling's `separability_matrix` does not compute separability correctly for nested CompoundModels\\nConsider the following model:\\n\\n```python\\nfrom astropy.modeling import models as m\\nfrom astropy.modeling.separable import separability_matrix\\n\\ncm = m.Linear1D(10) & m.Linear1D(5)\\n```\\n\\nIt's separability matrix as you might expect is a diagonal:\\n\\n```python\\n>>> separability_matrix(cm)\\narray([[ True, False],\\n       [False,  True]])\\n```\\n\\nIf I make the model more complex:\\n```python\\n>>> separability_matrix(m.Pix2Sky_TAN() & m.Linear1D(10) & m.Linear1D(5))\\narray([[ True,  True, False, False],\\n       [ True,  True, False, False],\\n       [False, False,  True, False],\\n       [False, False, False,  True]])\\n```\\n\\nThe output matrix is again, as expected, the outputs and inputs to the linear models are separable and independent of each other.\\n\\nIf however, I nest these compound models:\\n```python\\n>>> separability_matrix(m.Pix2Sky_TAN() & cm)\\narray([[ True,  True, False, False],\\n       [ True,  True, False, False],\\n       [False, False,  True,  True],\\n       [False, False,  True,  True]])\\n```\\nSuddenly the inputs and outputs are no longer separable?\\n\\nThis feels like a bug to me, but I might be missing something?\\n\",",
+    "  \"policies\": [",
+    "    {",
+    "      \"id\": \"P0\",",
+    "      \"parent_id\": null,",
+    "      \"level\": \"declarative\",",
+    "      \"definer\": \"human operator\",",
+    "      \"enforcer\": \"Orchestrator\",",
+    "      \"action\": \"...\",",
+    "      \"constraints\": { \"resource\": \"...\", \"spatial\": \"...\", \"temporal\": \"...\" },",
+    "      \"context\": \"...\",",
+    "      \"rationale\": \"...\"",
+    "    }",
+    "  ]",
+    "}",
+    "Each of resource, spatial, and temporal may be a single value or an array if the",
+    "policy has several. Use \"always\" for temporal when there is no time restriction.",
+    "Use null for any constraint that does not apply. Every non-root policy must have a",
+    "parent_id that exists in the list, and definer \"assurance engine\"."
+  ],
+  "response_text": {
+    "intent": "Resolve the incorrect `separability_matrix` result for nested `CompoundModel` instances so that nested parallel compositions preserve the same input-output separability as equivalent flat compositions.",
+    "policies": [
+      {
+        "id": "P0",
+        "parent_id": null,
+        "level": "declarative",
+        "definer": "human operator",
+        "enforcer": "Orchestrator",
+        "action": "resolve",
+        "constraints": {
+          "resource": "Astropy modeling separability computation for nested CompoundModel expressions",
+          "spatial": "repository modeling package",
+          "temporal": "always"
+        },
+        "context": "repository maintenance",
+        "rationale": "Restates the reported goal of making nested CompoundModel separability results correct."
+      },
+      {
+        "id": "P1",
+        "parent_id": "P0",
+        "level": "definitive",
+        "definer": "assurance engine",
+        "enforcer": "Monitor",
+        "action": "reproduce",
+        "constraints": {
+          "resource": [
+            "the nested expression `Pix2Sky_TAN() & (Linear1D(10) & Linear1D(5))`",
+            "the equivalent flat expression `Pix2Sky_TAN() & Linear1D(10) & Linear1D(5)`",
+            "their separability matrices"
+          ],
+          "spatial": "modeling separability test environment",
+          "temporal": "always"
+        },
+        "context": "repository maintenance",
+        "rationale": "A correction requires a stable reproduction showing that nesting changes the matrix despite equivalent parallel model structure."
+      },
+      {
+        "id": "P2",
+        "parent_id": "P0",
+        "level": "definitive",
+        "definer": "assurance engine",
+        "enforcer": "Analyze",
+        "action": "trace",
+        "constraints": {
+          "resource": [
+            "`separability_matrix`",
+            "recursive separability helper functions",
+            "parallel-composition handling for the `&` operator",
+            "intermediate coordinate-dependency arrays"
+          ],
+          "spatial": "modeling separability implementation",
+          "temporal": "always"
+        },
+        "context": "repository maintenance",
+        "rationale": "The discrepancy must be traced through recursive handling of nested compound models to identify where dependencies are over-approximated."
+      },
+      {
+        "id": "P3",
+        "parent_id": "P0",
+        "level": "definitive",
+        "definer": "assurance engine",
+        "enforcer": "Analyze",
+        "action": "derive",
+        "constraints": {
+          "resource": [
+            "expected separability matrix for nested parallel compositions",
+            "block-diagonal dependency composition rules",
+            "existing separability behavior for simple and flat CompoundModels"
+          ],
+          "spatial": "modeling separability design",
+          "temporal": "always"
+        },
+        "context": "repository maintenance",
+        "rationale": "The implementation should be guided by the established dependency semantics: each child of a parallel composition must retain its own separability block."
+      },
+      {
+        "id": "P4",
+        "parent_id": "P1",
+        "level": "imperative",
+        "definer": "assurance engine",
+        "enforcer": "Execute",
+        "action": "add",
+        "constraints": {
+          "resource": [
+            "regression test for `Pix2Sky_TAN() & (Linear1D(10) & Linear1D(5))`",
+            "expected matrix with a coupled 2-by-2 celestial block and independent 1-by-1 linear blocks",
+            "comparison test establishing equivalence with the flat parallel expression"
+          ],
+          "spatial": "modeling separability test suite",
+          "temporal": "always"
+        },
+        "context": "repository maintenance",
+        "rationale": "A regression test preserves the reproduced failure and defines the required behavior before a correction is applied."
+      },
+      {
+        "id": "P5",
+        "parent_id": "P2",
+        "level": "definitive",
+        "definer": "assurance engine",
+        "enforcer": "Plan",
+        "action": "select",
+        "constraints": {
+          "resource": "the minimal separability-composition correction that preserves child dependency matrices during nested `&` evaluation",
+          "spatial": "modeling separability implementation",
+          "temporal": "always"
+        },
+        "context": "repository maintenance",
+        "rationale": "After locating the faulty recursive composition behavior, a minimal correction should be selected to avoid altering unrelated model operators."
+      },
+      {
+        "id": "P6",
+        "parent_id": "P5",
+        "level": "imperative",
+        "definer": "assurance engine",
+        "enforcer": "Execute",
+        "action": "modify",
+        "constraints": {
+          "resource": "the nested parallel-composition separability logic so it combines left and right child dependency matrices as independent blocks rather than replacing a nested child's internal structure with a fully connected block",
+          "spatial": "modeling separability source module",
+          "temporal": "always"
+        },
+        "context": "repository maintenance",
+        "rationale": "Preserving the recursive child matrices during `&` composition directly addresses the dependency information lost by the nested expression."
+      },
+      {
+        "id": "P7",
+        "parent_id": "P6",
+        "level": "imperative",
+        "definer": "assurance engine",
+        "enforcer": "Execute",
+        "action": "run",
+        "constraints": {
+          "resource": [
+            "new nested CompoundModel separability regression tests",
+            "existing modeling separability tests",
+            "relevant CompoundModel operator tests"
+          ],
+          "spatial": "repository test environment",
+          "temporal": "always"
+        },
+        "context": "repository maintenance",
+        "rationale": "Running focused and related tests verifies that the correction fixes nested composition without regressing existing separability behavior."
+      },
+      {
+        "id": "P8",
+        "parent_id": "P7",
+        "level": "imperative",
+        "definer": "assurance engine",
+        "enforcer": "Execute",
+        "action": "report",
+        "constraints": {
+          "resource": [
+            "test outcomes",
+            "before-and-after separability matrices",
+            "identified root cause",
+            "proposed source and test changes"
+          ],
+          "spatial": "repository issue-resolution record",
+          "temporal": "always"
+        },
+        "context": "repository maintenance",
+        "rationale": "Recording the diagnosis and validation results provides an auditable plan and confirms that no repository changes are made during the current session."
+      }
+    ]
+  },
+  "parsed_tree": {
+    "intent": "Resolve the incorrect `separability_matrix` result for nested `CompoundModel` instances so that nested parallel compositions preserve the same input-output separability as equivalent flat compositions.",
+    "policies": [
+      {
+        "id": "P0",
+        "parent_id": null,
+        "level": "declarative",
+        "definer": "human operator",
+        "enforcer": "Orchestrator",
+        "action": "resolve",
+        "constraints": {
+          "resource": "Astropy modeling separability computation for nested CompoundModel expressions",
+          "spatial": "repository modeling package",
+          "temporal": "always"
+        },
+        "context": "repository maintenance",
+        "rationale": "Restates the reported goal of making nested CompoundModel separability results correct."
+      },
+      {
+        "id": "P1",
+        "parent_id": "P0",
+        "level": "definitive",
+        "definer": "assurance engine",
+        "enforcer": "Monitor",
+        "action": "reproduce",
+        "constraints": {
+          "resource": [
+            "the nested expression `Pix2Sky_TAN() & (Linear1D(10) & Linear1D(5))`",
+            "the equivalent flat expression `Pix2Sky_TAN() & Linear1D(10) & Linear1D(5)`",
+            "their separability matrices"
+          ],
+          "spatial": "modeling separability test environment",
+          "temporal": "always"
+        },
+        "context": "repository maintenance",
+        "rationale": "A correction requires a stable reproduction showing that nesting changes the matrix despite equivalent parallel model structure."
+      },
+      {
+        "id": "P2",
+        "parent_id": "P0",
+        "level": "definitive",
+        "definer": "assurance engine",
+        "enforcer": "Analyze",
+        "action": "trace",
+        "constraints": {
+          "resource": [
+            "`separability_matrix`",
+            "recursive separability helper functions",
+            "parallel-composition handling for the `&` operator",
+            "intermediate coordinate-dependency arrays"
+          ],
+          "spatial": "modeling separability implementation",
+          "temporal": "always"
+        },
+        "context": "repository maintenance",
+        "rationale": "The discrepancy must be traced through recursive handling of nested compound models to identify where dependencies are over-approximated."
+      },
+      {
+        "id": "P3",
+        "parent_id": "P0",
+        "level": "definitive",
+        "definer": "assurance engine",
+        "enforcer": "Analyze",
+        "action": "derive",
+        "constraints": {
+          "resource": [
+            "expected separability matrix for nested parallel compositions",
+            "block-diagonal dependency composition rules",
+            "existing separability behavior for simple and flat CompoundModels"
+          ],
+          "spatial": "modeling separability design",
+          "temporal": "always"
+        },
+        "context": "repository maintenance",
+        "rationale": "The implementation should be guided by the established dependency semantics: each child of a parallel composition must retain its own separability block."
+      },
+      {
+        "id": "P4",
+        "parent_id": "P1",
+        "level": "imperative",
+        "definer": "assurance engine",
+        "enforcer": "Execute",
+        "action": "add",
+        "constraints": {
+          "resource": [
+            "regression test for `Pix2Sky_TAN() & (Linear1D(10) & Linear1D(5))`",
+            "expected matrix with a coupled 2-by-2 celestial block and independent 1-by-1 linear blocks",
+            "comparison test establishing equivalence with the flat parallel expression"
+          ],
+          "spatial": "modeling separability test suite",
+          "temporal": "always"
+        },
+        "context": "repository maintenance",
+        "rationale": "A regression test preserves the reproduced failure and defines the required behavior before a correction is applied."
+      },
+      {
+        "id": "P5",
+        "parent_id": "P2",
+        "level": "definitive",
+        "definer": "assurance engine",
+        "enforcer": "Plan",
+        "action": "select",
+        "constraints": {
+          "resource": "the minimal separability-composition correction that preserves child dependency matrices during nested `&` evaluation",
+          "spatial": "modeling separability implementation",
+          "temporal": "always"
+        },
+        "context": "repository maintenance",
+        "rationale": "After locating the faulty recursive composition behavior, a minimal correction should be selected to avoid altering unrelated model operators."
+      },
+      {
+        "id": "P6",
+        "parent_id": "P5",
+        "level": "imperative",
+        "definer": "assurance engine",
+        "enforcer": "Execute",
+        "action": "modify",
+        "constraints": {
+          "resource": "the nested parallel-composition separability logic so it combines left and right child dependency matrices as independent blocks rather than replacing a nested child's internal structure with a fully connected block",
+          "spatial": "modeling separability source module",
+          "temporal": "always"
+        },
+        "context": "repository maintenance",
+        "rationale": "Preserving the recursive child matrices during `&` composition directly addresses the dependency information lost by the nested expression."
+      },
+      {
+        "id": "P7",
+        "parent_id": "P6",
+        "level": "imperative",
+        "definer": "assurance engine",
+        "enforcer": "Execute",
+        "action": "run",
+        "constraints": {
+          "resource": [
+            "new nested CompoundModel separability regression tests",
+            "existing modeling separability tests",
+            "relevant CompoundModel operator tests"
+          ],
+          "spatial": "repository test environment",
+          "temporal": "always"
+        },
+        "context": "repository maintenance",
+        "rationale": "Running focused and related tests verifies that the correction fixes nested composition without regressing existing separability behavior."
+      },
+      {
+        "id": "P8",
+        "parent_id": "P7",
+        "level": "imperative",
+        "definer": "assurance engine",
+        "enforcer": "Execute",
+        "action": "report",
+        "constraints": {
+          "resource": [
+            "test outcomes",
+            "before-and-after separability matrices",
+            "identified root cause",
+            "proposed source and test changes"
+          ],
+          "spatial": "repository issue-resolution record",
+          "temporal": "always"
+        },
+        "context": "repository maintenance",
+        "rationale": "Recording the diagnosis and validation results provides an auditable plan and confirms that no repository changes are made during the current session."
+      }
+    ]
+  },
+  "parse_error": null,
+  "structural_checks": {
+    "policies": 9,
+    "tc_mechanical": 1.0,
+    "ac_mechanical": 1.0,
+    "ef_mechanical": 1.0,
+    "levels": {
+      "declarative": 1,
+      "definitive": 4,
+      "imperative": 4
+    },
+    "problems": []
+  },
+  "wall_s": 16.25,
+  "mechanical_fields_recomputed": true
+}

@@ -1,0 +1,7 @@
+PS D:\THESIS REPOSITORY\SPINE_project\2nd_artifacts\astropy_12907> & C:\Users\Johnr\AppData\Local\Programs\Python\Python311\python.exe "d:/THESIS REPOSITORY/SPINE_project/2nd_artifacts/astropy_12907/review_tools/measure_overhead.py"
+CLAUDE tree   nodes=11 chain=5 leaf=P6    traversal=0.35 us  bytes(convention)=8615  file=29712 B
+GPT tree      nodes= 9 chain=6 leaf=P8    traversal=0.41 us  bytes(convention)=6559  file=25464 B
+CLAUDE prose  chars=  4110 full-scan=12.91 us  file=8038 B
+GPT prose     chars=  3224 full-scan=9.51 us  file=7119 B
+CLAUDE traj   chars= 24895 full-scan=75.21 us  file=56937 B
+GPT traj      chars=  5684 full-scan=12.16 us  file=16683 B
