@@ -1,0 +1,83 @@
+{
+  "config": "structured_plan",
+  "outcome": "done",
+  "plan_meta": {
+    "planner_provider": "anthropic",
+    "planner_model": "claude-sonnet-4-6",
+    "plan_file": "D:\\THESIS REPOSITORY\\SPINE_project\\2nd_artifacts\\astropy_12907\\CLAUDE_SONNET\\structured\\outputs\\plan_structured_astropy__astropy-12907_claude-sonnet-4-6_run1.json",
+    "plan_sha256": "8a5593c1f772484698591d8c57ac4044632145e3826becd01949474e581b3a65",
+    "plan_schema_version": "plan_structured/2",
+    "plan_instance_id": "astropy__astropy-12907"
+  },
+  "plan_desc": "11 policies, root ['P0']",
+  "records": [
+    {
+      "schema_version": "exec_record/1",
+      "step_id": 0,
+      "action": {
+        "name": "search_repo",
+        "args": {
+          "term": "separability_matrix"
+        },
+        "thought": "[P2.1] run the reproduction first"
+      },
+      "observation": "stub hit: separability_matrix found in astropy/modeling/separable.py",
+      "timestamp": "2026-08-04T03:39:09.987431+00:00",
+      "policy_id": "P2.1",
+      "provenance_mode": "recorded",
+      "gate_flag": false
+    },
+    {
+      "schema_version": "exec_record/1",
+      "step_id": 1,
+      "action": {
+        "name": "edit_file",
+        "args": {
+          "path": "astropy/modeling/separable.py",
+          "old": "x",
+          "new": "y"
+        },
+        "thought": "[P5] apply the fix"
+      },
+      "observation": "stub edit applied to astropy/modeling/separable.py",
+      "timestamp": "2026-08-04T03:39:09.987431+00:00",
+      "policy_id": "P5",
+      "provenance_mode": "recorded",
+      "gate_flag": false
+    },
+    {
+      "schema_version": "exec_record/1",
+      "step_id": 2,
+      "action": {
+        "name": "edit_file",
+        "args": {
+          "path": "commit",
+          "old": "",
+          "new": ""
+        },
+        "thought": "[P7.1] commit the change"
+      },
+      "observation": "stub edit applied to commit",
+      "timestamp": "2026-08-04T03:39:09.987431+00:00",
+      "policy_id": "P7.1",
+      "provenance_mode": "recorded",
+      "gate_flag": true
+    },
+    {
+      "schema_version": "exec_record/1",
+      "step_id": 3,
+      "action": {
+        "name": "done",
+        "args": {
+          "summary": "stub run"
+        },
+        "thought": "done"
+      },
+      "observation": "submitted: stub run",
+      "timestamp": "2026-08-04T03:39:09.991753+00:00",
+      "policy_id": null,
+      "provenance_mode": "recorded",
+      "gate_flag": false
+    }
+  ]
+}

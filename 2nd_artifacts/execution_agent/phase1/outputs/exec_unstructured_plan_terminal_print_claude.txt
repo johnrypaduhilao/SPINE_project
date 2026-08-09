@@ -1,0 +1,23 @@
+PS D:\THESIS REPOSITORY\SPINE_project\2nd_artifacts\execution_agent\phase1> python exec_harness.py --config unstructured_plan --provider anthropic --repo-dir D:/THESIS_RESULT/REPO/astropy_12907 --instance-json .\request_file\astropy__astropy-12907.json --plan-file ..\..\astropy_12907\CLAUDE_SONNET\unstructured\outputs\plan_unstructured_astropy__astropy-12907_claude-sonnet-4-6_run1.json
+config          : unstructured_plan
+instance        : astropy__astropy-12907
+plan            : 4110 chars prose
+planner         : anthropic / claude-sonnet-4-6
+executor        : anthropic / claude-sonnet-4-6
+prompt sha256   : 595c42f2a43f7398305d76614f7bf1381172332087ece7d760a50e626ebfeed5
+prompt chars    : 5653
+turn 0 ..............
+turn 1 .............
+turn 2 .........
+turn 3 ...............
+turn 4 ..........................................
+turn 5 ...................
+turn 6 ..................................................................
+exec run -> outputs\exec_unstructured_plan_astropy__astropy-12907_planner-claude-sonnet-4-6_executor-claude-sonnet-4-6_run1.json
+turns            : 7
+outcome          : done
+gate_flags       : 0 (recorded, never blocked)
+policy_id set    : 0/7 (attribution at emit time)
+provenance_mode  : reconstructed
+edited          : True
+usage total     : {"input_tokens": 27948, "output_tokens": 1083, "total_tokens": 29031}
