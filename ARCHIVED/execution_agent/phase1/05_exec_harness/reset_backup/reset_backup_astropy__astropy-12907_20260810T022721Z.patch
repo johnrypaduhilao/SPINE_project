@@ -1,0 +1,61 @@
+diff --git a/astropy/modeling/separable.py b/astropy/modeling/separable.py
+index a308e2729..45bea3608 100644
+--- a/astropy/modeling/separable.py
++++ b/astropy/modeling/separable.py
+@@ -242,7 +242,7 @@ def _cstack(left, right):
+         cright = _coord_matrix(right, 'right', noutp)
+     else:
+         cright = np.zeros((noutp, right.shape[1]))
+-        cright[-right.shape[0]:, -right.shape[1]:] = 1
++        cright[-right.shape[0]:, -right.shape[1]:] = right
+ 
+     return np.hstack([cleft, cright])
+ 
+diff --git a/astropy/modeling/tests/test_separable.py b/astropy/modeling/tests/test_separable.py
+index 8dfe5c862..661e58f06 100644
+--- a/astropy/modeling/tests/test_separable.py
++++ b/astropy/modeling/tests/test_separable.py
+@@ -135,6 +135,43 @@ def test_separable(compound_model, result):
+     assert_allclose(separability_matrix(compound_model), result[1])
+ 
+ 
++def test_separability_matrix_nested_compound_model():
++    """
++    Regression test for https://github.com/astropy/astropy/issues/XXXX
++    separability_matrix should correctly handle nested CompoundModels,
++    preserving block-diagonal structure for independent sub-models.
++    """
++    # A simple compound model (flat)
++    cm = models.Linear1D(10) & models.Linear1D(5)
++    assert_allclose(separability_matrix(cm),
++                    np.array([[True, False],
++                              [False, True]]))
++
++    # Flat compound: Pix2Sky_TAN() & Linear1D(10) & Linear1D(5)
++    result_flat = separability_matrix(
++        models.Pix2Sky_TAN() & models.Linear1D(10) & models.Linear1D(5))
++    expected = np.array([[True,  True, False, False],
++                         [True,  True, False, False],
++                         [False, False, True,  False],
++                         [False, False, False, True]])
++    assert_allclose(result_flat, expected)
++
++    # Nested compound: Pix2Sky_TAN() & (Linear1D(10) & Linear1D(5))
++    # Should produce the same result as the flat form
++    result_nested = separability_matrix(models.Pix2Sky_TAN() & cm)
++    assert_allclose(result_nested, expected)
++
++    # Doubly nested compound model
++    cm2 = models.Linear1D(1) & models.Linear1D(2)
++    cm3 = cm & cm2
++    result_double_nested = separability_matrix(cm3)
++    expected_double = np.array([[True,  False, False, False],
++                                [False, True,  False, False],
++                                [False, False, True,  False],
++                                [False, False, False, True]])
++    assert_allclose(result_double_nested, expected_double)
++
++
+ def test_custom_model_separable():
+     @custom_model
+     def model_a(x):
