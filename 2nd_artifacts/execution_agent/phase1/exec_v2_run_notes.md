@@ -155,3 +155,15 @@ Freeze expectations (dry-run, your machine governs):
 Live: reset, C-struct --tail v5 --account school, reset, G-struct
 same. Artifacts land as _tail-v5_run1.json, destined for
 05_exec_harness.
+
+
+## v6 (clean register, cut after the v5 walk)
+
+
+Freeze expectations (dry-run, your machine governs):
+  C-struct v5: 82525a90c2ce6394b5015157f7bb3f35d1c268a990218b3a33cad90d8373d986  chars 11194
+  G-struct v5: 7c5b9967f90ad27a131079014287276282d028e4ec79469049e63f5564e00490  chars 9138
+
+Live: reset, C-struct --tail v6 --account school, reset, G-struct
+same. Artifacts land as _tail-v6_run1.json, destined for
+06_exec_harness.

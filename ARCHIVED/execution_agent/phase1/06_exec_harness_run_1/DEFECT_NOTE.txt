@@ -1,0 +1,21 @@
+DEFECT_NOTE
+Run 1 of tail v6, 2026-08-10. NOT CANONICAL. Not part of the main
+scorecard. Complementary observations and run-2 commentary only.
+
+Defect: the harness tag parser accepted tags only for tails v4 and v5
+(emit_record, two sites), so v6 fell through to the v1-v3 prefix parser
+and every record's policy_id and policy_action_echo came out null. The
+tags ARE present verbatim in the stored thoughts: Claude 3/13 turns,
+GPT 13/13 turns. The behavioral sample is valid; only the recording
+layer failed. Prompt freeze is unaffected: both artifact prompt hashes
+match the banked v6 dry-run predictions (82525a90..., 7c5b9967...).
+
+Also noted for run-2 comparison: the GPT cell ended agent_stopped at 13
+records (max_turns 30), after its third edit, with no done call and
+therefore no reconciliation. Cause unknown; single run.
+
+exec_harness.py in this folder is the run-1 working copy; the defect is
+visible at both parser sites.
+
+Canonical v6 evidence: run 2 under 06_exec_harness, produced by the
+fixed harness (parser includes v6; no other change).

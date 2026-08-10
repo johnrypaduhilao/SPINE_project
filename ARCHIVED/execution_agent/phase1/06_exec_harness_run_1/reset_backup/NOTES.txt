@@ -1,0 +1,5 @@
+reset_backup_astropy__astropy-12907_20260810T171744Z.patch
+--CLAUDE
+
+reset_backup_astropy__astropy-12907_20260810T172035Z.patch
+--GPT
