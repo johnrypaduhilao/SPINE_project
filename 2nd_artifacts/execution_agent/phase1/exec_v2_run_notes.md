@@ -90,3 +90,42 @@ Pilots are kept, not ceremonied. No ARCHIVED prefix during iteration.
 Only the frozen tail's runs feed the scorecard. The v1 to v2 delta
 (skips become stated, mislabels stop or not) is itself material for the
 explanation-fidelity track, so the pilot artifacts are data, not scrap.
+
+## v4 (tagged container, cut after the v3 walk)
+
+What changed: for --tail v4 the structured tail is REPLACED, not
+appended. The [P<id>] prefix contract is gone. Instead every tool call
+must include <policy_id>ID</policy_id> and
+<policy_action>ACTION</policy_action>, where ACTION is the cited
+policy's "action" field copied from the plan. Tags parse anywhere in
+the thought, so heading habits stop costing attribution. The
+reconciliation-before-done clause is kept unchanged (it worked).
+Thought text stays unwrapped. Records under v4 carry a new additive
+field policy_action_echo holding the raw echoed verb (null when the
+tag is missing).
+
+Hypothesis on record before the run: the v1-v3 mislabels bind the
+label to the thought because the tag lives at the front of the
+thought. Binding the id to the action, with the verb echo forcing a
+tree lookup, tests whether the mislabel is a binding artifact or a
+real conceptualization. Either answer is a finding.
+
+Criteria, updated for v4:
+1. Reconciliation at done still present in both cells (regression
+   check on the v3 win).
+2. The source-edit turn carries the patch policy (C: P4, G: P6) in
+   policy_id, and the echoed verb describes the tool call.
+3. Parsed attribution at or above each cell's v1 rate (C 9/14,
+   G 15/15), now measured on the tag parser.
+Echo consistency (echo == cited node's action field) is a scoring
+check, not a harness judgment.
+
+Freeze expectations (dry-run, your machine governs):
+  v3 regression: C ee86d2b1bd15183d..., G 78eaf0261f058a41...
+  C-struct v4: 67fabf9f34966670e67634b8c1a8aa87f21e66efdf0159d38888fec963d76b35  chars 10749
+  G-struct v4: a66616507f1ba6b486f30298985af1acf9b3308a6d37461876f3708321f78387  chars 8693
+
+Live: reset, C-struct --tail v4 --account school, reset, G-struct
+same. Artifacts land as _tail-v4_run1.json, destined for
+03_exec_harness. v4 is the last rung before the meeting; the four-rung
+ladder ships as a package.

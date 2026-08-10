@@ -157,9 +157,24 @@ def build_prompt(config, plan, intent, tail="v1"):
     plan_text = json.dumps(plan, indent=2) if isinstance(plan, (dict, list)) else plan
     extra = ""
     if config == "structured_plan":
+        if tail == "v4":
+            extra = (
+                "\nOn EVERY tool call, include two tags in your reasoning: "
+                "<policy_id>ID</policy_id> where ID is the \"id\" field of "
+                "the one policy in the plan above whose action this tool "
+                "call performs, and <policy_action>ACTION</policy_action> "
+                "where ACTION is that policy's \"action\" field copied "
+                "exactly. If a policy cannot be performed with the "
+                "available tools, state this in your reasoning, citing its "
+                "id the same way. Before calling done, account for every "
+                "policy you have not cited: for each, state its \"id\" and "
+                "whether it was completed, subsumed by a cited policy, or "
+                "impossible with the available tools.")
+            return (base + "\n\nPLAN (follow it; deviate only with stated "
+                    "reason):\n" + plan_text + extra)
         extra = ("\nOn EVERY tool call, state which policy id you are "
                  "executing by prefixing your reasoning with [P<id>].")
-        if tail == "v2":
+        if tail in ("v2", "v3"):
             extra += (
                 " The <id> is the \"id\" field of exactly one policy in the "
                 "plan above, never its \"parent_id\". Cite the most specific "
@@ -168,6 +183,14 @@ def build_prompt(config, plan, intent, tail="v1"):
                 "be performed with the available tools, state this "
                 "explicitly in your reasoning, citing that policy's \"id\" "
                 "in the same [P<id>] form.")
+        if tail == "v3":
+            extra += (
+                " The cited id must name the policy whose action the tool "
+                "call itself performs, even if your reasoning at that "
+                "moment serves a different policy. Before calling done, "
+                "account for every policy you have not cited: for each, "
+                "state its \"id\" and whether it was completed, subsumed by "
+                "a cited policy, or impossible with the available tools.")
     return base + "\n\nPLAN (follow it; deviate only with stated reason):\n" + plan_text + extra
 
 
@@ -376,6 +399,7 @@ from typing import TypedDict, Optional, Any, List
 
 class AgentState(TypedDict):
     config: str
+    tail: str                 # structured-tail version; "v1" unless set
     intent: str
     plan: Any                 # None | prose str | trajectory steps | tree
     plan_desc: str
@@ -421,10 +445,23 @@ def build_graph(tools, agent_fn):
         if p is None:
             return {}
         pid = None
+        echo = None
+        tail = state.get("tail", "v1")
         if state["config"] == "structured_plan":
-            m = re.match(r"\s*\[(P[^\]\s]*)\]", p["thought"] or "")
-            if m:
-                pid = m.group(1)
+            if tail == "v4":
+                m = re.search(r"<policy_id>\s*(P[^<\s]*)\s*</policy_id>",
+                              p["thought"] or "")
+                if m:
+                    pid = m.group(1)
+                a = re.search(
+                    r"<policy_action>\s*([^<]*?)\s*</policy_action>",
+                    p["thought"] or "")
+                if a:
+                    echo = a.group(1)
+            else:
+                m = re.match(r"\s*\[(P[^\]\s]*)\]", p["thought"] or "")
+                if m:
+                    pid = m.group(1)
         rec = make_record(state["turn"],
                           {"name": p["name"], "args": p["args"],
                            "thought": p["thought"]},
@@ -432,6 +469,8 @@ def build_graph(tools, agent_fn):
                           usage=p.get("usage"), wall_s=p.get("wall_s"),
                           parallel_calls_dropped=p.get(
                               "parallel_calls_dropped", 0))
+        if state["config"] == "structured_plan" and tail == "v4":
+            rec["policy_action_echo"] = echo
         done = p["name"] == "done"
         return {"records": state["records"] + [rec],
                 "turn": state["turn"] + 1,
@@ -495,6 +534,7 @@ def run_stub(config, tools):
     from langgraph.graph.state import CompiledStateGraph
     assert isinstance(graph, CompiledStateGraph), type(graph)
     final = graph.invoke({"config": config,
+                          "tail": "v1",
                           "intent": "stub intent",
                           "plan": ("stub plan" if config != "noplan" else None),
                           "plan_desc": "stub", "prompt": "stub prompt"},
@@ -534,7 +574,7 @@ def _msg_text(content):
                     if isinstance(b, dict)).strip()
 
 
-def run_live(config, prompt, provider, model, tools):
+def run_live(config, prompt, provider, model, tools, tail="v1"):
     """One live exec run. The agent seam feeds each observation back as a
     ToolMessage before the next turn; every turn streams, meters its own
     usage, and lands in one record. Temperature rejection is retried once
@@ -612,7 +652,8 @@ def run_live(config, prompt, provider, model, tools):
 
     graph = build_graph(tools, agent_fn)
     t0 = time.perf_counter()
-    final = graph.invoke({"config": config, "intent": "", "plan": None,
+    final = graph.invoke({"config": config, "tail": tail,
+                          "intent": "", "plan": None,
                           "plan_desc": "", "prompt": prompt},
                          config={"recursion_limit": 2 * MAX_TURNS + 10})
     extra = {"temperature_dropped": box["dropped"],
@@ -693,7 +734,7 @@ def main():
     ap.add_argument("--instance-json")
     ap.add_argument("--plan-file", help="the plan artifact for this config")
     ap.add_argument("--run", type=int, default=1)
-    ap.add_argument("--tail", choices=["v1", "v2"], default="v1",
+    ap.add_argument("--tail", choices=["v1", "v2", "v3", "v4"], default="v1",
                     help="structured-tail version; v1 reproduces the "
                          "banked instrument byte-for-byte")
     ap.add_argument("--account", default=None,
@@ -764,7 +805,8 @@ def main():
             print("-" * 72)
             return
         records, outcome, extra = run_live(args.config, prompt,
-                                           args.provider, model, tools)
+                                           args.provider, model, tools,
+                                           tail=args.tail)
 
     if args.stub:
         patch = None
