@@ -134,19 +134,24 @@ the most specific policy whose action the tool call performs" and the
 model still labeled its cognitive phase. GPT does not show this: its
 edits carry the right policy in both versions.
 Cells: C-struct v1 (t6) and v2 (t5, t6).
-Anchor: 00_exec_harness/outputs, C-struct artifact, t6 action.thought;
-01_exec_harness/outputs, C-struct tail-v2 artifact, t5 and t6 thoughts.
+Anchor: 01_exec_harness/outputs, C-struct artifact, t6 action.thought;
+02_exec_harness/outputs, C-struct tail-v2 artifact, t5 and t6 thoughts.
 Track: 2, feeds 4.
 Papers: to fill in the lit pass. Candidate home is the reasoning
 faithfulness track, since this is a gap between stated basis and
 performed action.
-Status: replicated three times (v1, v2, v3 structured cells, same model,
-this instance). The v3 clause said outright that the id must name what
-the tool call itself performs, even if the reasoning serves another
-policy, and the edit still went out under [P2.2] with "Root cause
-confirmed" as the thought. Three instrument versions, same turn, same
-behavior. The elicitation ladder is exhausted for this instance; this
-is now a finding, not a prompt problem.
+Status: replicated four times (v1 through v4, same model, this
+instance), and v4 settles the mechanism question. v4 moved the id out
+of the thought prefix into action-bound tags with a verb echo copied
+from the tree, and the mislabel survived the move: the source edit went
+out as P3 with <policy_action>decide</policy_action> on an edit_file
+call, and this time the test edit slid too (P3.2, design). The patch
+and add labels landed on the verification reads one turn later. So the
+labels lag the actions by one phase: the model stamps what its mind
+just concluded, does the deed inside it, and credits the deed's policy
+to the next look. Not a binding artifact, not a format problem. The
+one v4 consolation: the echo makes these self-documenting, since
+"decide" sitting on an edit flags itself without a manual walk.
 
 ## OB-08 the executor added a step the plan never asked for
 What happened: Claude on its prose plan self-initiated a verification
@@ -223,7 +228,7 @@ even though its edit turn was mislabeled (OB-12). So the intent-level
 story is recoverable from the reconciliation even when the turn-level
 label is wrong. The two layers fail independently.
 Cells: C-struct v3 (t12), G-struct v3 (t12).
-Anchor: 02_exec_harness artifacts, done-turn thoughts, both cells.
+Anchor: 03_exec_harness artifacts, done-turn thoughts, both cells.
 Track: 2, feeds 4.
 Papers: to fill in the lit pass.
 Status: single run per cell.
@@ -241,8 +246,28 @@ prefixes. No causal claim from one run, but the direction is worth
 watching: the run asked to do more accounting got sloppier at the
 per-turn mechanics.
 Cells: C-struct v3.
-Anchor: 02_exec_harness C artifact, t7 and t10 thoughts; parse rule at
+Anchor: 03_exec_harness C artifact, t7 and t10 thoughts; parse rule at
 emit time in exec_harness.py.
 Track: 2, feeds 4.
 Papers: to fill in the lit pass.
 Status: single run.
+
+## OB-15 the two models traded places when the container changed
+What happened: under the prefix contract (v1 to v3) GPT attributed
+every single turn, three runs straight, while Claude kept dropping
+tags. v4 swapped the prefix for anywhere-in-thought tags, and the two
+swapped roles: Claude came back up to 9/13 (above its v1 rate, the
+heading problem gone), GPT fell to 9/14, going bare on its
+continuation reads and on done. Same models, same task, same plan,
+only the attribution container changed. So there is no universally
+better container between prefix and tags for these two models. GPT's
+perfect streak was tied to the prefix ritual; Claude's failures were
+tied to it. Elicitation format is a per-model property.
+Both cells still reconciled in full at done, so the v3 win held
+through the container change.
+Cells: C-struct v4, G-struct v4, against v1 to v3.
+Anchor: 04_exec_harness artifacts, per-turn policy_id and
+policy_action_echo fields; the untagged G turns t3, t4, t5, t8, t13.
+Track: 2, feeds 4.
+Papers: to fill in the lit pass.
+Status: single run per cell for v4; the prefix side is three runs.
