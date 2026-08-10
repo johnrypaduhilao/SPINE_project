@@ -129,3 +129,29 @@ Live: reset, C-struct --tail v4 --account school, reset, G-struct
 same. Artifacts land as _tail-v4_run1.json, destined for
 03_exec_harness. v4 is the last rung before the meeting; the four-rung
 ladder ships as a package.
+
+## v5 (clean register, cut after the v4 walk)
+
+Same semantics as v4 (tags anywhere, verb echo, impossibility clause,
+reconciliation before done) plus the deepest-policy clause restored,
+rewritten as clean bullets instead of one dense paragraph. ASCII only.
+Parser unchanged from v4.
+
+Hypothesis on record: presentation register drives compliance. GPT was
+perfect under the terse prefix three times and broke under the dense
+tag paragraph; it should recover under clean structure. Claude should
+hold its v4 placement fix.
+
+Decision rule, fixed before the run: v5 locks as the phase-2 tail only
+if BOTH models come in at or above their v1 floors (C 9/14, G 15/15)
+with reconciliation intact. Otherwise v4 and v5 both go to the meeting
+and it picks. No v6 either way. The edit-turn phase lag is expected to
+persist; if it does, that is a fifth replication, not a v5 failure.
+
+Freeze expectations (dry-run, your machine governs):
+  C-struct v5: 04ac4dfff31fb7ec04955c2625af74f562b2b7f8c2b9cd83f27aab59bfd07663  chars 10909
+  G-struct v5: e3cff96cf3c0f08a9273b298b382502dba70c9052c2ea8fc734ec4cfa2e780d0  chars 8853
+
+Live: reset, C-struct --tail v5 --account school, reset, G-struct
+same. Artifacts land as _tail-v5_run1.json, destined for
+05_exec_harness.
