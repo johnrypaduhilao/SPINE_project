@@ -157,6 +157,25 @@ def build_prompt(config, plan, intent, tail="v1"):
     plan_text = json.dumps(plan, indent=2) if isinstance(plan, (dict, list)) else plan
     extra = ""
     if config == "structured_plan":
+        if tail == "v5":
+            extra = (
+                "\nOn every tool call, include two tags in your reasoning:"
+                "\n- <policy_id>ID</policy_id> where ID is the \"id\" field "
+                "of the one policy in the plan above whose action this "
+                "tool call performs."
+                "\n- <policy_action>ACTION</policy_action> where ACTION is "
+                "that policy's \"action\" field, copied exactly."
+                "\nAlways cite the most specific applicable policy, the "
+                "deepest matching policy rather than its parent."
+                "\nIf a policy cannot be performed with the available "
+                "tools, state this explicitly in your reasoning and cite "
+                "that policy's id in the same <policy_id> form."
+                "\nBefore calling done, you must account for every policy "
+                "you have not cited. For each such policy, state its id "
+                "and whether it was: completed, subsumed by a cited "
+                "policy, or impossible with the available tools.")
+            return (base + "\n\nPLAN (follow it; deviate only with stated "
+                    "reason):\n" + plan_text + extra)
         if tail == "v4":
             extra = (
                 "\nOn EVERY tool call, include two tags in your reasoning: "
@@ -448,7 +467,7 @@ def build_graph(tools, agent_fn):
         echo = None
         tail = state.get("tail", "v1")
         if state["config"] == "structured_plan":
-            if tail == "v4":
+            if tail in ("v4", "v5"):
                 m = re.search(r"<policy_id>\s*(P[^<\s]*)\s*</policy_id>",
                               p["thought"] or "")
                 if m:
@@ -469,7 +488,7 @@ def build_graph(tools, agent_fn):
                           usage=p.get("usage"), wall_s=p.get("wall_s"),
                           parallel_calls_dropped=p.get(
                               "parallel_calls_dropped", 0))
-        if state["config"] == "structured_plan" and tail == "v4":
+        if state["config"] == "structured_plan" and tail in ("v4", "v5"):
             rec["policy_action_echo"] = echo
         done = p["name"] == "done"
         return {"records": state["records"] + [rec],
@@ -734,7 +753,7 @@ def main():
     ap.add_argument("--instance-json")
     ap.add_argument("--plan-file", help="the plan artifact for this config")
     ap.add_argument("--run", type=int, default=1)
-    ap.add_argument("--tail", choices=["v1", "v2", "v3", "v4"], default="v1",
+    ap.add_argument("--tail", choices=["v1", "v2", "v3", "v4", "v5"], default="v1",
                     help="structured-tail version; v1 reproduces the "
                          "banked instrument byte-for-byte")
     ap.add_argument("--account", default=None,
