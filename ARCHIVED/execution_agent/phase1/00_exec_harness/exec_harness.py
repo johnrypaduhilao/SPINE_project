@@ -46,6 +46,7 @@ pilot_swebench_spine.py.
 import argparse
 import hashlib
 import json
+import re
 import os
 import shutil
 import sys
@@ -56,7 +57,9 @@ OUT_DIR = "outputs"
 MAX_TURNS = 30            # our cap, not a benchmark standard
 MAX_OBS_CHARS = 3000
 TEMPERATURE = 0
-SCHEMA_VERSION = "exec_record/1"
+MAX_TOKENS = 16000        # raised from 8000: reasoning-tier models spend
+                          # hidden tokens inside the completion budget
+SCHEMA_VERSION = "exec_record/2"
 
 DEFAULT_MODEL = {
     "google": "gemini-3.5-flash",       # banked runs, kept reproducible
@@ -142,11 +145,12 @@ def load_plan(config, plan_file):
     sys.exit("unknown config %s" % config)
 
 
-def build_prompt(config, plan, repo_dir, intent):
+def build_prompt(config, plan, intent):
     base = (
-        "You are a software engineering agent working in a repository at %s. "
-        "Fix the following issue using the tools. When the fix is applied, "
-        "call done with a one-line summary.\n\nISSUE:\n%s" % (repo_dir, intent)
+        "You are a software engineering agent working in a repository. "
+        "Use the tools to inspect and modify the code; paths are relative "
+        "to the repository root. Fix the following issue. When the fix is "
+        "applied, call done with a one-line summary.\n\nISSUE:\n%s" % intent
     )
     if config == "noplan":
         return base
@@ -162,9 +166,10 @@ def build_prompt(config, plan, repo_dir, intent):
 
 # --- record schema, identical in every config ------------------------------
 
-def make_record(step_id, action, observation, policy_id, config):
+def make_record(step_id, action, observation, policy_id, config,
+                usage=None, wall_s=None, parallel_calls_dropped=0):
     gate_flag = any(p in json.dumps(action).lower() for p in GATE_PATTERNS)
-    return {
+    rec = {
         "schema_version": SCHEMA_VERSION,
         "step_id": step_id,
         "action": action,
@@ -175,6 +180,13 @@ def make_record(step_id, action, observation, policy_id, config):
                             else "reconstructed"),
         "gate_flag": gate_flag,
     }
+    if usage:
+        rec["usage"] = usage
+    if wall_s is not None:
+        rec["wall_s"] = wall_s
+    if parallel_calls_dropped:
+        rec["parallel_calls_dropped"] = parallel_calls_dropped
+    return rec
 
 
 # --- tools -----------------------------------------------------------------
@@ -380,36 +392,40 @@ def build_graph(tools, agent_fn):
     tmap = {f.__name__: f for f in tools}
 
     def inject_plan(state: AgentState):
-        # placeholder - the plan artifact goes into the state verbatim.
-        # TODO(pilot) 6: for structured_plan, index the tree by id too, so
-        # the attribution parse can check [P<id>] against real nodes.
-        prompt = build_prompt(state["config"], state["plan"],
-                              "stub_repo", state["intent"])
-        return {"prompt": prompt, "turn": 0, "records": [],
-                "outcome": "running", "pending": None}
+        # the prompt arrives fully built in the initial state; attribution
+        # of [P<id>] against real tree nodes is the scorer's job
+        return {"turn": 0, "records": [], "outcome": "running",
+                "pending": None}
 
     def agent_turn(state: AgentState):
         step = agent_fn(state)
         if step is None:
             return {"outcome": "agent_stopped"}
-        thought, name, args = step
-        obs = tmap[name](**args)
-        return {"pending": {"thought": thought,
-                            "action": {"name": name, "args": args},
-                            "observation": obs}}
+        try:
+            obs = tmap[step["name"]](**step["args"])
+        except KeyError:
+            obs = "tool error: no tool named %r" % step["name"]
+        except TypeError as e:
+            obs = "tool error: bad arguments for %s: %s" % (step["name"], e)
+        return {"pending": {**step, "observation": obs}}
 
     def emit_record(state: AgentState):
         p = state["pending"]
         if p is None:
             return {}
         pid = None
-        if state["config"] == "structured_plan" and \
-                p["thought"].startswith("[P"):
-            pid = p["thought"].split("]")[0].strip("[")
+        if state["config"] == "structured_plan":
+            m = re.match(r"\s*\[(P[^\]\s]*)\]", p["thought"] or "")
+            if m:
+                pid = m.group(1)
         rec = make_record(state["turn"],
-                          {**p["action"], "thought": p["thought"]},
-                          p["observation"], pid, state["config"])
-        done = p["action"]["name"] == "done"
+                          {"name": p["name"], "args": p["args"],
+                           "thought": p["thought"]},
+                          p["observation"], pid, state["config"],
+                          usage=p.get("usage"), wall_s=p.get("wall_s"),
+                          parallel_calls_dropped=p.get(
+                              "parallel_calls_dropped", 0))
+        done = p["name"] == "done"
         return {"records": state["records"] + [rec],
                 "turn": state["turn"] + 1,
                 "pending": None,
@@ -461,7 +477,10 @@ def run_stub(config, tools):
 
     def scripted_agent(state):
         i = state["turn"]
-        return script[i] if i < len(script) else None
+        if i >= len(script):
+            return None
+        thought, name, args = script[i]
+        return {"thought": thought, "name": name, "args": args}
 
     graph = build_graph(tools, scripted_agent)
     # type check, as in the banked exec script: records that the compiled
@@ -471,27 +490,138 @@ def run_stub(config, tools):
     final = graph.invoke({"config": config,
                           "intent": "stub intent",
                           "plan": ("stub plan" if config != "noplan" else None),
-                          "plan_desc": "stub"})
+                          "plan_desc": "stub", "prompt": "stub prompt"},
+                         config={"recursion_limit": 2 * MAX_TURNS + 10})
     return final["records"], final["outcome"]
 
 
+def make_exec_llm(provider, model, drop_temperature=False):
+    if provider == "anthropic":
+        from langchain_anthropic import ChatAnthropic
+        return ChatAnthropic(model=model, temperature=TEMPERATURE,
+                             max_tokens=MAX_TOKENS)
+    if provider == "openai":
+        from langchain_openai import ChatOpenAI
+        # reasoning-tier models reject function tools on the chat
+        # completions endpoint; the Responses API supports both. Transport
+        # change only: temperature and max_tokens are unchanged and the
+        # asymmetry is recorded in the artifact.
+        kwargs = {"model": model, "max_tokens": MAX_TOKENS,
+                  "use_responses_api": True}
+        if not drop_temperature:
+            kwargs["temperature"] = TEMPERATURE
+        try:
+            return ChatOpenAI(stream_usage=True, **kwargs)
+        except TypeError as e:
+            sys.exit("ChatOpenAI rejected an argument (%s); "
+                     "pip install -U langchain-openai (use_responses_api "
+                     "and stream_usage are required for the exec arm)" % e)
+    sys.exit("unknown provider: %s (google is banked, not wired live)"
+             % provider)
+
+
+def _msg_text(content):
+    if isinstance(content, str):
+        return content
+    return " ".join(b.get("text", "") for b in content
+                    if isinstance(b, dict)).strip()
+
+
 def run_live(config, prompt, provider, model, tools):
-    # TODO(pilot) 1: LangChain v1 create_agent over the four tools, streaming
-    # with live progress, GraphRecursionError kept as a result plus the
-    # partial trajectory. Take the loop from the banked Gemini exec script -
-    # it already has outcome tracking and budget handling.
-    # Providers: ChatGoogleGenerativeAI / ChatAnthropic / ChatOpenAI (pip
-    # install langchain-openai for the third). Check TODO(pilot) 7 in
-    # DEFAULT_MODEL for the OpenAI temperature caveat before the first run.
-    # TODO(pilot) 2: fold each streamed AI message + tool result into one
-    # record via make_record, as run_stub does.
-    # TODO(pilot) 4: outputs named exec_<config>_<instance>_<model>_run<n>.json
-    sys.exit("live mode not wired yet; run --stub. Build order: TODO(pilot) 1-5.")
+    """One live exec run. The agent seam feeds each observation back as a
+    ToolMessage before the next turn; every turn streams, meters its own
+    usage, and lands in one record. Temperature rejection is retried once
+    without it and recorded, mirroring the plan runners."""
+    from langchain_core.messages import HumanMessage, ToolMessage
+    from langchain_core.tools import tool as lc_tool
+
+    def bind(llm):
+        lc_tools = [lc_tool(f) for f in tools]
+        try:
+            return llm.bind_tools(lc_tools, parallel_tool_calls=False)
+        except TypeError:
+            return llm.bind_tools(lc_tools)
+
+    raw_llm = make_exec_llm(provider, model)
+    box = {"llm": bind(raw_llm),
+           "messages": [HumanMessage(prompt)],
+           "temperature_effective": getattr(raw_llm, "temperature", None),
+           "last_call_id": None, "dropped": False,
+           "final_text": None, "error": None}
+
+    def stream_turn():
+        final = None
+        t0 = time.perf_counter()
+        for chunk in box["llm"].stream(box["messages"]):
+            final = chunk if final is None else final + chunk
+            print(".", end="", flush=True)
+        print()
+        return final, time.perf_counter() - t0
+
+    def agent_fn(gstate):
+        if box["last_call_id"] is not None and gstate["records"]:
+            box["messages"].append(ToolMessage(
+                content=gstate["records"][-1]["observation"],
+                tool_call_id=box["last_call_id"]))
+            box["last_call_id"] = None
+        print("turn %d " % gstate["turn"], end="", flush=True)
+        try:
+            ai, wall = stream_turn()
+        except Exception as e:
+            if (provider == "openai" and not box["dropped"]
+                    and "temperature" in str(e).lower()):
+                box["dropped"] = True
+                print("temperature rejected; retrying without it",
+                      flush=True)
+                retry_llm = make_exec_llm(provider, model,
+                                          drop_temperature=True)
+                box["llm"] = bind(retry_llm)
+                box["temperature_effective"] = getattr(
+                    retry_llm, "temperature", None)
+                try:
+                    ai, wall = stream_turn()
+                except Exception as e2:
+                    box["error"] = str(e2)
+                    return None
+            else:
+                box["error"] = str(e)
+                return None
+        if ai is None:
+            box["error"] = "empty stream"
+            return None
+        calls = getattr(ai, "tool_calls", None) or []
+        thought = _msg_text(ai.content)
+        if not calls:
+            box["final_text"] = thought
+            return None
+        box["messages"].append(ai)
+        tc = calls[0]
+        box["last_call_id"] = tc.get("id")
+        return {"thought": thought, "name": tc["name"],
+                "args": tc.get("args") or {},
+                "usage": getattr(ai, "usage_metadata", None) or {},
+                "wall_s": round(wall, 2),
+                "parallel_calls_dropped": len(calls) - 1}
+
+    graph = build_graph(tools, agent_fn)
+    t0 = time.perf_counter()
+    final = graph.invoke({"config": config, "intent": "", "plan": None,
+                          "plan_desc": "", "prompt": prompt},
+                         config={"recursion_limit": 2 * MAX_TURNS + 10})
+    extra = {"temperature_dropped": box["dropped"],
+             "temperature_effective": box["temperature_effective"],
+             "final_text": box["final_text"],
+             "stream_error": box["error"],
+             "wall_s_total": round(time.perf_counter() - t0, 2)}
+    return final["records"], final["outcome"], extra
 
 
 def behavior_stats(records, outcome):
     print("turns            : %d" % len(records))
     print("outcome          : %s" % outcome)
+    if not records:
+        print("no records (agent produced no tool call)")
+        return
     print("gate_flags       : %d (recorded, never blocked)"
           % sum(1 for r in records if r["gate_flag"]))
     attributed = sum(1 for r in records if r["policy_id"])
@@ -557,6 +687,8 @@ def main():
     ap.add_argument("--plan-file", help="the plan artifact for this config")
     ap.add_argument("--run", type=int, default=1)
     ap.add_argument("--stub", action="store_true")
+    ap.add_argument("--dry-run", action="store_true",
+                    help="build and print the exact prompt + hashes, no call")
     ap.add_argument("--tool-check", action="store_true",
                     help="exercise the real tools, no API calls, tree left clean")
     args = ap.parse_args()
@@ -596,25 +728,86 @@ def main():
                      "refusing to inject a plan for a different issue"
                      % (plan_meta["plan_instance_id"],
                         instance["instance_id"]))
-        prompt = build_prompt(args.config, plan, args.repo_dir,
+        prompt = build_prompt(args.config, plan,
                               instance["problem_statement"])
         model = args.model or DEFAULT_MODEL[args.provider]
-        records, outcome = run_live(args.config, prompt, args.provider,
-                                    model, tools)
+        prompt_sha = hashlib.sha256(prompt.encode("utf-8")).hexdigest()
+        print("config          : %s" % args.config)
+        print("instance        : %s" % instance["instance_id"])
+        print("plan            : %s" % plan_desc)
+        print("planner         : %s / %s" % (plan_meta["planner_provider"],
+                                             plan_meta["planner_model"]))
+        print("executor        : %s / %s" % (args.provider, model))
+        print("prompt sha256   : %s" % prompt_sha)
+        print("prompt chars    : %d" % len(prompt))
+        if args.dry_run:
+            print("\nDRY RUN: no call made. Nothing below is a result.")
+            print("-" * 72)
+            print(prompt)
+            print("-" * 72)
+            return
+        records, outcome, extra = run_live(args.config, prompt,
+                                           args.provider, model, tools)
 
-    patch = None if args.stub else capture_patch(args.repo_dir)
-    os.makedirs(OUT_DIR, exist_ok=True)
-    out = os.path.join(OUT_DIR, "exec_%s_stub_run%d.json"
-                       % (args.config, args.run))
-    json.dump({"config": args.config, "outcome": outcome,
-               "plan_meta": plan_meta, "plan_desc": plan_desc,
-               "model_patch_capture": patch,
-               "records": records}, open(out, "w", encoding="utf-8"),
-              indent=2, ensure_ascii=False)
-    print("records -> %s" % out)
-    behavior_stats(records, outcome)
     if args.stub:
+        patch = None
+        os.makedirs(OUT_DIR, exist_ok=True)
+        out = os.path.join(OUT_DIR, "exec_%s_stub_run%d.json"
+                           % (args.config, args.run))
+        json.dump({"config": args.config, "outcome": outcome,
+                   "plan_meta": plan_meta, "plan_desc": plan_desc,
+                   "model_patch_capture": patch,
+                   "records": records}, open(out, "w", encoding="utf-8"),
+                  indent=2, ensure_ascii=False)
+        print("records -> %s" % out)
+        behavior_stats(records, outcome)
         print("\nSTUB RUN: wiring check only. Nothing above is a result.")
+        return
+
+    patch = capture_patch(args.repo_dir)
+    usage_total = {}
+    for r in records:
+        for k, v in (r.get("usage") or {}).items():
+            if isinstance(v, int):
+                usage_total[k] = usage_total.get(k, 0) + v
+    os.makedirs(OUT_DIR, exist_ok=True)
+    out = os.path.join(OUT_DIR,
+                       "exec_%s_%s_planner-%s_executor-%s_run%d.json"
+                       % (args.config, instance["instance_id"],
+                          plan_meta["planner_model"] or "none",
+                          model, args.run))
+    json.dump({
+        "schema_version": "exec_run/1",
+        "config": args.config,
+        "instance_id": instance["instance_id"],
+        "executor_provider": args.provider,
+        "executor_model": model,
+        "openai_use_responses_api": (True if args.provider == "openai"
+                                     else None),
+        "plan_meta": plan_meta,
+        "plan_desc": plan_desc,
+        "temperature": TEMPERATURE,
+        "temperature_effective": extra["temperature_effective"],
+        "temperature_dropped": extra["temperature_dropped"],
+        "max_tokens": MAX_TOKENS,
+        "max_turns": MAX_TURNS,
+        "run": args.run,
+        "outcome": outcome,
+        "stream_error": extra["stream_error"],
+        "final_text": extra["final_text"],
+        "prompt_sha256": prompt_sha,
+        "prompt": prompt,
+        "wall_s_total": extra["wall_s_total"],
+        "usage_total": usage_total,
+        "model_patch_capture": patch,
+        "records": records,
+    }, open(out, "w", encoding="utf-8"), indent=2, ensure_ascii=False)
+    print("exec run -> %s" % out)
+    behavior_stats(records, outcome)
+    print("edited          : %s" % patch.get("edited"))
+    print("usage total     : %s" % json.dumps(usage_total))
+    if extra["stream_error"]:
+        print("stream error    : %s" % extra["stream_error"])
 
 
 if __name__ == "__main__":

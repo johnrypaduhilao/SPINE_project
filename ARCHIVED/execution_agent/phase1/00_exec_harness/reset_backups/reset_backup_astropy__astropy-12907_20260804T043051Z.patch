@@ -1,0 +1,65 @@
+diff --git a/astropy/modeling/separable.py b/astropy/modeling/separable.py
+index a308e2729..45bea3608 100644
+--- a/astropy/modeling/separable.py
++++ b/astropy/modeling/separable.py
+@@ -242,7 +242,7 @@ def _cstack(left, right):
+         cright = _coord_matrix(right, 'right', noutp)
+     else:
+         cright = np.zeros((noutp, right.shape[1]))
+-        cright[-right.shape[0]:, -right.shape[1]:] = 1
++        cright[-right.shape[0]:, -right.shape[1]:] = right
+ 
+     return np.hstack([cleft, cright])
+ 
+diff --git a/astropy/modeling/tests/test_separable.py b/astropy/modeling/tests/test_separable.py
+index 8dfe5c862..c942f69db 100644
+--- a/astropy/modeling/tests/test_separable.py
++++ b/astropy/modeling/tests/test_separable.py
+@@ -148,3 +148,47 @@ def test_custom_model_separable():
+ 
+     assert not model_c().separable
+     assert np.all(separability_matrix(model_c()) == [True, True])
++
++
++def test_separability_matrix_nested_compound_model():
++    """
++    Regression test for https://github.com/astropy/astropy/issues/XXXX
++
++    separability_matrix should correctly compute separability for nested
++    CompoundModels, returning a block-diagonal structure when sub-models
++    are independent.
++    """
++    # A nested compound model: Pix2Sky_TAN() & (Linear1D(10) & Linear1D(5))
++    # should produce the same separability matrix as the flat form:
++    # Pix2Sky_TAN() & Linear1D(10) & Linear1D(5)
++    cm = models.Linear1D(10) & models.Linear1D(5)
++    nested = models.Pix2Sky_TAN() & cm
++    flat = models.Pix2Sky_TAN() & models.Linear1D(10) & models.Linear1D(5)
++
++    expected = np.array([
++        [True,  True,  False, False],
++        [True,  True,  False, False],
++        [False, False, True,  False],
++        [False, False, False, True],
++    ])
++
++    assert_allclose(separability_matrix(nested), expected), \
++        "Nested CompoundModel separability matrix does not match expected block-diagonal structure"
++    assert_allclose(separability_matrix(flat), expected), \
++        "Flat CompoundModel separability matrix does not match expected block-diagonal structure"
++
++    # Verify the two forms produce identical results
++    assert_allclose(separability_matrix(nested), separability_matrix(flat)), \
++        "Nested and flat CompoundModels should have identical separability matrices"
++
++    # A simple nested case: (Linear1D & Linear1D) should be diagonal
++    assert_allclose(
++        separability_matrix(cm),
++        np.array([[True, False], [False, True]])
++    )
++
++    # Doubly nested: (Linear1D & Linear1D) & (Linear1D & Linear1D)
++    cm2 = models.Linear1D(1) & models.Linear1D(2)
++    doubly_nested = cm & cm2
++    expected_4x4_diag = np.eye(4, dtype=bool)
++    assert_allclose(separability_matrix(doubly_nested), expected_4x4_diag)

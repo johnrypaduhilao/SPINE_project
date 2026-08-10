@@ -145,7 +145,7 @@ def load_plan(config, plan_file):
     sys.exit("unknown config %s" % config)
 
 
-def build_prompt(config, plan, intent):
+def build_prompt(config, plan, intent, tail="v1"):
     base = (
         "You are a software engineering agent working in a repository. "
         "Use the tools to inspect and modify the code; paths are relative "
@@ -159,8 +159,15 @@ def build_prompt(config, plan, intent):
     if config == "structured_plan":
         extra = ("\nOn EVERY tool call, state which policy id you are "
                  "executing by prefixing your reasoning with [P<id>].")
-        # TODO(pilot) 3: pull the [P<id>] prefix off the AI message and write
-        # it into policy_id at emit time.
+        if tail == "v2":
+            extra += (
+                " The <id> is the \"id\" field of exactly one policy in the "
+                "plan above, never its \"parent_id\". Cite the most specific "
+                "policy whose action the tool call performs, the deepest "
+                "matching policy rather than an ancestor. If a policy cannot "
+                "be performed with the available tools, state this "
+                "explicitly in your reasoning, citing that policy's \"id\" "
+                "in the same [P<id>] form.")
     return base + "\n\nPLAN (follow it; deviate only with stated reason):\n" + plan_text + extra
 
 
@@ -686,6 +693,11 @@ def main():
     ap.add_argument("--instance-json")
     ap.add_argument("--plan-file", help="the plan artifact for this config")
     ap.add_argument("--run", type=int, default=1)
+    ap.add_argument("--tail", choices=["v1", "v2"], default="v1",
+                    help="structured-tail version; v1 reproduces the "
+                         "banked instrument byte-for-byte")
+    ap.add_argument("--account", default=None,
+                    help="API account label recorded in the artifact")
     ap.add_argument("--stub", action="store_true")
     ap.add_argument("--dry-run", action="store_true",
                     help="build and print the exact prompt + hashes, no call")
@@ -700,6 +712,9 @@ def main():
         return
     if not args.config:
         sys.exit("--config is required (or use --tool-check)")
+    if args.tail != "v1" and args.config != "structured_plan":
+        sys.exit("--tail v2 only applies to structured_plan; the other "
+                 "configs carry no tail and must not be labeled with one")
 
     tools = make_stub_tools() if args.stub else make_real_tools(args.repo_dir)
 
@@ -729,10 +744,12 @@ def main():
                      % (plan_meta["plan_instance_id"],
                         instance["instance_id"]))
         prompt = build_prompt(args.config, plan,
-                              instance["problem_statement"])
+                              instance["problem_statement"], args.tail)
         model = args.model or DEFAULT_MODEL[args.provider]
         prompt_sha = hashlib.sha256(prompt.encode("utf-8")).hexdigest()
         print("config          : %s" % args.config)
+        if args.config == "structured_plan":
+            print("instrument tail : %s" % args.tail)
         print("instance        : %s" % instance["instance_id"])
         print("plan            : %s" % plan_desc)
         print("planner         : %s / %s" % (plan_meta["planner_provider"],
@@ -771,11 +788,17 @@ def main():
             if isinstance(v, int):
                 usage_total[k] = usage_total.get(k, 0) + v
     os.makedirs(OUT_DIR, exist_ok=True)
+    tail_tag = ("_tail-%s" % args.tail
+                if (args.config == "structured_plan" and args.tail != "v1")
+                else "")
     out = os.path.join(OUT_DIR,
-                       "exec_%s_%s_planner-%s_executor-%s_run%d.json"
+                       "exec_%s_%s_planner-%s_executor-%s%s_run%d.json"
                        % (args.config, instance["instance_id"],
                           plan_meta["planner_model"] or "none",
-                          model, args.run))
+                          model, tail_tag, args.run))
+    if os.path.exists(out):
+        sys.exit("refusing to overwrite existing artifact %s; bump --run "
+                 "or move the file first" % out)
     json.dump({
         "schema_version": "exec_run/1",
         "config": args.config,
@@ -792,6 +815,9 @@ def main():
         "max_tokens": MAX_TOKENS,
         "max_turns": MAX_TURNS,
         "run": args.run,
+        "instrument_tail": (args.tail if args.config == "structured_plan"
+                            else None),
+        "api_account": args.account,
         "outcome": outcome,
         "stream_error": extra["stream_error"],
         "final_text": extra["final_text"],

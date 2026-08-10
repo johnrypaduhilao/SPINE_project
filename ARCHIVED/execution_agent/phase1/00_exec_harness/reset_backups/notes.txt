@@ -1,0 +1,7 @@
+D:\THESIS_RESULT\REPO\reset_backup_astropy__astropy-12907_20260804T042546Z.patch || outputs\exec_unstructured_plan_astropy__astropy-12907_planner-claude-sonnet-4-6_executor-claude-sonnet-4-6_run1.json
+
+D:\THESIS_RESULT\REPO\reset_backup_astropy__astropy-12907_20260804T043051Z.patch || outputs\exec_structured_plan_astropy__astropy-12907_planner-claude-sonnet-4-6_executor-claude-sonnet-4-6_run1.json
+
+D:\THESIS_RESULT\REPO\reset_backup_astropy__astropy-12907_20260804T045712Z.patch || outputs\exec_unstructured_plan_astropy__astropy-12907_planner-gpt-5.6-terra_executor-gpt-5.6-terra_run1.json
+
+D:\THESIS_RESULT\REPO\reset_backup_astropy__astropy-12907_20260804T134503Z.patch || outputs\exec_structured_plan_astropy__astropy-12907_planner-gpt-5.6-terra_executor-gpt-5.6-terra_run1.json
