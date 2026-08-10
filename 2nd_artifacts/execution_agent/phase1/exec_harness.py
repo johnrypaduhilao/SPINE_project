@@ -159,7 +159,7 @@ def build_prompt(config, plan, intent, tail="v1"):
     if config == "structured_plan":
         extra = ("\nOn EVERY tool call, state which policy id you are "
                  "executing by prefixing your reasoning with [P<id>].")
-        if tail == "v2":
+        if tail in ("v2", "v3"):
             extra += (
                 " The <id> is the \"id\" field of exactly one policy in the "
                 "plan above, never its \"parent_id\". Cite the most specific "
@@ -168,6 +168,14 @@ def build_prompt(config, plan, intent, tail="v1"):
                 "be performed with the available tools, state this "
                 "explicitly in your reasoning, citing that policy's \"id\" "
                 "in the same [P<id>] form.")
+        if tail == "v3":
+            extra += (
+                " The cited id must name the policy whose action the tool "
+                "call itself performs, even if your reasoning at that "
+                "moment serves a different policy. Before calling done, "
+                "account for every policy you have not cited: for each, "
+                "state its \"id\" and whether it was completed, subsumed by "
+                "a cited policy, or impossible with the available tools.")
     return base + "\n\nPLAN (follow it; deviate only with stated reason):\n" + plan_text + extra
 
 
@@ -693,7 +701,7 @@ def main():
     ap.add_argument("--instance-json")
     ap.add_argument("--plan-file", help="the plan artifact for this config")
     ap.add_argument("--run", type=int, default=1)
-    ap.add_argument("--tail", choices=["v1", "v2"], default="v1",
+    ap.add_argument("--tail", choices=["v1", "v2", "v3"], default="v1",
                     help="structured-tail version; v1 reproduces the "
                          "banked instrument byte-for-byte")
     ap.add_argument("--account", default=None,

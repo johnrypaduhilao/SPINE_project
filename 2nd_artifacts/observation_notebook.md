@@ -117,7 +117,32 @@ Cells: C-struct.
 Anchor: exec artifact, the edit turn citing P3.1; plan tree, P4.
 Track: 4, feeds 2.
 Papers: to fill in the lit pass.
-Status: single run.
+Status: replicated. The v2 rerun mislabeled the same edit again, under
+[P2.2] this time. See OB-12 for what the two mislabels share.
+
+## OB-12 the label follows the thought, not the tool call
+What happened: on the turn where Claude applies the source fix, the
+cited policy matches what the reasoning is doing, not what the tool call
+does. In v1 the edit ran under [P3.1] with the thought "The bug is
+confirmed... The fix is simple: change = 1 to = right" (a diagnosis
+conclusion, labeled with a Plan node, while the action is the patch).
+In v2 the same edit ran under [P2.2] with "Now I fully understand the
+bug" (an analysis conclusion, same thing). Both times P4, the actual
+patch policy, shows up late or never: v2 cites it on the verification
+read after the edit, v1 never cites it. The v2 tail already said "cite
+the most specific policy whose action the tool call performs" and the
+model still labeled its cognitive phase. GPT does not show this: its
+edits carry the right policy in both versions.
+Cells: C-struct v1 (t6) and v2 (t5, t6).
+Anchor: 00_exec_harness/outputs, C-struct artifact, t6 action.thought;
+01_exec_harness/outputs, C-struct tail-v2 artifact, t5 and t6 thoughts.
+Track: 2, feeds 4.
+Papers: to fill in the lit pass. Candidate home is the reasoning
+faithfulness track, since this is a gap between stated basis and
+performed action.
+Status: replicated (v1 and v2 structured cells, same model, this
+instance). The v3 clause tests whether saying "the tool call itself"
+closes it.
 
 ## OB-08 the executor added a step the plan never asked for
 What happened: Claude on its prose plan self-initiated a verification
@@ -143,8 +168,13 @@ Cells: C-traj (plan stage).
 Anchor: scorecard_astropy12907_run2_FINAL.xlsx, Precision_traj rows 17,
 24, 29, 33 notes.
 Track: 3.
-Papers: the overthinking paper named in the meeting, exact cite to
-confirm. New instances should be picked from its simple vs complex cases.
+Papers: Cuadron et al. 2025, The Danger of Overthinking, arXiv
+2502.08235. Confirmed against the pdf. Their released trajectories and
+scores are the pool for picking new instances. One caution when mapping:
+their rubric treats repeated retries as fine as long as the model waits
+for feedback between tries, so our loop is closer to an efficiency
+problem than to their overthinking definition. Their overthinking is
+about preferring internal simulation over real feedback.
 Status: single run.
 
 ## OB-10 structure costs tokens at execution time
