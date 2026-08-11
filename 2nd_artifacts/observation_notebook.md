@@ -343,13 +343,16 @@ nested-compound regression test; Docker pending, predictions logged
 with every prior C run; G at a fourth distinct location (138, after
 148, 56, 113); neither overlaps the held-out test hunks at 28 and
 52-59.
-Cells: C-traj exec, G-traj exec (phase1v2, run 1 each).
-Anchor: phase1v2 00_TRAJECTORY outputs, C artifact t00 thought "I'll
-follow the plan", t06 edit thought "Found it. On line 245"; G artifact
-t09/t10 edit order against plan parsed_steps 5 and 6.
+Cells: C-traj exec, G-traj exec (phase1v2, run 2 canonical; run 1
+archived pre-truncation-fix, first sighting).
+Anchor: phase1v2 00_TRAJECTORY outputs run 2 artifacts, C t00 thought
+"I'll follow the plan", source edit t05, test edit t09, no deviation
+statement anywhere; G t09/t10 edit order against plan parsed_steps 5
+and 6. Same signals in the archived run 1 (C t06/t10, G t09/t10).
 Track: 2, with a foot in 1 and 4.
 Papers: to fill in the lit pass.
-Status: single run per cell.
+Status: replicated (both cells, archived run plus canonical rerun; the
+plan-stage facts are single-artifact properties and hold regardless).
 
 ## OB-20 GPT went silent again once nothing asked it to talk
 What happened: in the trajectory cells GPT's stored thoughts are empty
@@ -361,10 +364,12 @@ regardless. Consequence for the reconstructed side: for a GPT no-tag
 run the chain-of-thought component of the reconstruction material is
 absent entirely, so prose reconstruction works from actions and
 observations only. The baseline description in the paper should say so.
-Cells: G-traj exec, C-traj exec (phase1v2).
-Anchor: phase1v2 00_TRAJECTORY outputs, per-record action.thought
-fields (G empty 12/12, C empty 5/14).
+Cells: G-traj exec, C-traj exec (phase1v2, run 2 canonical; run 1
+archived, first sighting).
+Anchor: phase1v2 00_TRAJECTORY outputs run 2 artifacts, per-record
+action.thought fields (G empty 12/12 in both runs; C substantive on
+9/14 in run 1 and 8/13 in run 2).
 Track: 2, feeds 4.
 Papers: to fill in the lit pass.
-Status: single run for trajectory; the three-representation pattern
-spans OB-04 plus this entry.
+Status: replicated for trajectory (archived run plus canonical rerun);
+the three-representation pattern spans OB-04 plus this entry.

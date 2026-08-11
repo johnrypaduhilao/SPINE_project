@@ -1,0 +1,5 @@
+reset_backup_astropy__astropy-12907_20260811T020141Z.patch
+--CLAUDE TRAJ
+
+reset_backup_astropy__astropy-12907_20260811T020345Z.patch
+--GPT TRAJ
