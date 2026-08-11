@@ -1,0 +1,527 @@
+{
+  "schema_version": "exec_dispatch_run/1",
+  "config": "structured_dispatch",
+  "dispatch_scope": "imperatives",
+  "policy_queue": [
+    "P4",
+    "P5",
+    "P6"
+  ],
+  "instance_id": "astropy__astropy-12907",
+  "executor_provider": "anthropic",
+  "executor_model": "claude-sonnet-4-6",
+  "openai_use_responses_api": null,
+  "plan_meta": {
+    "planner_provider": "anthropic",
+    "planner_model": "claude-sonnet-4-6",
+    "plan_file": "D:\\THESIS REPOSITORY\\SPINE_project\\2nd_artifacts\\astropy_12907\\CLAUDE_SONNET\\structured\\outputs\\plan_structured_astropy__astropy-12907_claude-sonnet-4-6_run1.json",
+    "plan_sha256": "8a5593c1f772484698591d8c57ac4044632145e3826becd01949474e581b3a65",
+    "plan_schema_version": "plan_structured/2",
+    "plan_instance_id": "astropy__astropy-12907"
+  },
+  "plan_desc": "11 policies, root ['P0']",
+  "temperature": 0,
+  "temperature_effective": 0.0,
+  "temperature_dropped": false,
+  "max_tokens": 16000,
+  "max_turns": 30,
+  "run": 1,
+  "api_account": "school",
+  "outcome": "done",
+  "stream_error": null,
+  "final_text": null,
+  "initial_prompt_sha256": "5f30b74700f173494a5cd1a7e73e0f7a500229148fda56be9344a80277a733bc",
+  "dispatch_manifest_sha256": "d3cc4baaa2637bb00c02b7e763b8fd0b869ea440791ed4afb4c3b00051750e64",
+  "initial_prompt": "You are a software engineering agent working in a repository. Use the tools to inspect and modify the code; paths are relative to the repository root. Fix the following issue. When the fix is applied, call done with a one-line summary.\n\nISSUE:\nModeling's `separability_matrix` does not compute separability correctly for nested CompoundModels\nConsider the following model:\r\n\r\n```python\r\nfrom astropy.modeling import models as m\r\nfrom astropy.modeling.separable import separability_matrix\r\n\r\ncm = m.Linear1D(10) & m.Linear1D(5)\r\n```\r\n\r\nIt's separability matrix as you might expect is a diagonal:\r\n\r\n```python\r\n>>> separability_matrix(cm)\r\narray([[ True, False],\r\n       [False,  True]])\r\n```\r\n\r\nIf I make the model more complex:\r\n```python\r\n>>> separability_matrix(m.Pix2Sky_TAN() & m.Linear1D(10) & m.Linear1D(5))\r\narray([[ True,  True, False, False],\r\n       [ True,  True, False, False],\r\n       [False, False,  True, False],\r\n       [False, False, False,  True]])\r\n```\r\n\r\nThe output matrix is again, as expected, the outputs and inputs to the linear models are separable and independent of each other.\r\n\r\nIf however, I nest these compound models:\r\n```python\r\n>>> separability_matrix(m.Pix2Sky_TAN() & cm)\r\narray([[ True,  True, False, False],\r\n       [ True,  True, False, False],\r\n       [False, False,  True,  True],\r\n       [False, False,  True,  True]])\r\n```\r\nSuddenly the inputs and outputs are no longer separable?\r\n\r\nThis feels like a bug to me, but I might be missing something?\n\n\nPLAN PROTOCOL:\nThe plan for this issue is provided one policy at a time. Work on the current policy with the tools. When the current policy's action is complete, or cannot be performed with the available tools, call policy_complete with a one-line summary and the next policy will be provided.\n\nCURRENT POLICY (1 of 3):\n{\n  \"id\": \"P4\",\n  \"parent_id\": \"P3.1\",\n  \"level\": \"imperative\",\n  \"definer\": \"assurance engine\",\n  \"enforcer\": \"Execute\",\n  \"action\": \"patch\",\n  \"constraints\": {\n    \"resource\": \"_separable function (or equivalent combiner) in astropy/modeling/separable.py\",\n    \"spatial\": \"astropy/modeling/separable.py\",\n    \"temporal\": \"always\"\n  },\n  \"context\": \"production\",\n  \"rationale\": \"Directly modify the code path that handles the '&' (join/concatenate) operator so that when either operand is itself a CompoundModel, its separability matrix is recursively computed and correctly block-composed rather than treated as a single dense unit; fires when the identified defective branch is reached during matrix construction.\"\n}",
+  "policy_transitions": [
+    {
+      "policy_id": "P4",
+      "activated_turn": 0,
+      "completed_turn": 6,
+      "completion_summary": "Fixed the one-line bug in `_cstack` in `astropy/modeling/separable.py` where `cright[-right.shape[0]:, -right.shape[1]:] = 1` was changed to `= right`, so that when the right operand of `&` is already a computed separability matrix (ndarray), its actual values are preserved instead of being overwritten with all-ones."
+    },
+    {
+      "policy_id": "P5",
+      "activated_turn": 7,
+      "completed_turn": 11,
+      "completion_summary": "Added two new parametrized test cases (`cm8` and `cm9`) to `compound_models` in `astropy/modeling/tests/test_separable.py` that assert correct block-diagonal separability matrices for nested CompoundModels (`Pix2Sky_TAN() & (Linear1D(10) & Linear1D(5))` and its mirror), directly covering the reported regression."
+    },
+    {
+      "policy_id": "P6",
+      "activated_turn": 12,
+      "completed_turn": null,
+      "completion_summary": null
+    }
+  ],
+  "remaining_policies": [
+    "P6"
+  ],
+  "wall_s_total": 74.51,
+  "usage_total": {
+    "input_tokens": 116466,
+    "output_tokens": 2807,
+    "total_tokens": 119273
+  },
+  "model_patch_capture": {
+    "model_patch": "diff --git a/astropy/modeling/separable.py b/astropy/modeling/separable.py\nindex a308e2729..45bea3608 100644\n--- a/astropy/modeling/separable.py\n+++ b/astropy/modeling/separable.py\n@@ -242,7 +242,7 @@ def _cstack(left, right):\n         cright = _coord_matrix(right, 'right', noutp)\n     else:\n         cright = np.zeros((noutp, right.shape[1]))\n-        cright[-right.shape[0]:, -right.shape[1]:] = 1\n+        cright[-right.shape[0]:, -right.shape[1]:] = right\n \n     return np.hstack([cleft, cright])\n \ndiff --git a/astropy/modeling/tests/test_separable.py b/astropy/modeling/tests/test_separable.py\nindex 8dfe5c862..836c39e32 100644\n--- a/astropy/modeling/tests/test_separable.py\n+++ b/astropy/modeling/tests/test_separable.py\n@@ -52,7 +52,21 @@ compound_models = {\n     'cm7': (map2 | p2 & sh1,\n             (np.array([False, True]),\n              np.array([[True, False], [False, True]]))\n-            )\n+            ),\n+    'cm8': (models.Pix2Sky_TAN() & (models.Linear1D(10) & models.Linear1D(5)),\n+            (np.array([False, False, True, True]),\n+             np.array([[True,  True,  False, False],\n+                       [True,  True,  False, False],\n+                       [False, False, True,  False],\n+                       [False, False, False, True]]))\n+            ),\n+    'cm9': ((models.Linear1D(10) & models.Linear1D(5)) & models.Pix2Sky_TAN(),\n+            (np.array([True, True, False, False]),\n+             np.array([[True,  False, False, False],\n+                       [False, True,  False, False],\n+                       [False, False, True,  True],\n+                       [False, False, True,  True]]))\n+            ),\n }\n \n \n",
+    "base_commit_at_capture": "d16bfe05a744909de4b27f5875fe0d4ed41ce607",
+    "untracked_files": [],
+    "edited": true
+  },
+  "records": [
+    {
+      "schema_version": "exec_record/2",
+      "step_id": 0,
+      "action": {
+        "name": "open_file",
+        "args": {
+          "path": "astropy/modeling/separable.py",
+          "end": 300
+        },
+        "thought": "Let me start by examining the relevant file."
+      },
+      "observation": "astropy/modeling/separable.py lines 1-300 of 317\n     1| # Licensed under a 3-clause BSD style license - see LICENSE.rst\n     2| \n     3| \"\"\"\n     4| Functions to determine if a model is separable, i.e.\n     5| if the model outputs are independent.\n     6| \n     7| It analyzes ``n_inputs``, ``n_outputs`` and the operators\n     8| in a compound model by stepping through the transforms\n     9| and creating a ``coord_matrix`` of shape (``n_outputs``, ``n_inputs``).\n    10| \n    11| \n    12| Each modeling operator is represented by a function which\n    13| takes two simple models (or two ``coord_matrix`` arrays) and\n    14| returns an array of shape (``n_outputs``, ``n_inputs``).\n    15| \n    16| \"\"\"\n    17| \n    18| import numpy as np\n    19| \n    20| from .core import Model, ModelDefinitionError, CompoundModel\n    21| from .mappings import Mapping\n    22| \n    23| \n    24| __all__ = [\"is_separable\", \"separability_matrix\"]\n    25| \n    26| \n    27| def is_separable(transform):\n    28|     \"\"\"\n    29|     A separability test for the outputs of a transform.\n    30| \n    31|     Parameters\n    32|     ----------\n    33|     transform : `~astropy.modeling.core.Model`\n    34|         A (compound) model.\n    35| \n    36|     Returns\n    37|     -------\n    38|     is_separable : ndarray\n    39|         A boolean array with size ``transform.n_outputs`` where\n    40|         each element indicates whether the output is independent\n    41|         and the result of a separable transform.\n    42| \n    43|     Examples\n    44|     --------\n    45|     >>> from astropy.modeling.models import Shift, Scale, Rotation2D, Polynomial2D\n    46|     >>> is_separable(Shift(1) & Shift(2) | Scale(1) & Scale(2))\n    47|         array([ True,  True]...)\n    48|     >>> is_separable(Shift(1) & Shift(2) | Rotation2D(2))\n    49|         array([False, False]...)\n    50|     >>> is_separable(Shift(1) & Shift(2) | Mapping([0, 1, 0, 1]) | \\\n    51|         Polynomial2D(1) & Polynomial2D(2))\n    52|         array([False, False]...)\n    53|     >>> is_separable(Shift(1) & Shift(2) | Mapping([0, 1, 0, 1]))\n    54|         array([ True,  True,  True,  True]...)\n    55| \n    56|     \"\"\"\n    57|     if transform.n_inputs == 1 and transform.n_outputs > 1:\n    58|         is_separable = np.array([False] * transform.n_outputs).T\n    59|         return is_separable\n    60|     separable_matrix = _separable(transform)\n    61|     is_separable = separable_matrix.sum(1)\n    62|     is_separable = np.where(is_separable != 1, False, True)\n    63|     return is_separable\n    64| \n    65| \n    66| def separability_matrix(transform):\n    67|     \"\"\"\n    68|     Compute the correlation between outputs and inputs.\n    69| \n    70|     Parameters\n    71|     ----------\n    72|     transform : `~astropy.modeling.core.Model`\n    73|         A (compound) model.\n    74| \n    75|     Returns\n    76|     -------\n    77|     separable_matrix : ndarray\n    78|    \n[truncated at 3000 chars; narrow the request]",
+      "timestamp": "2026-08-11T03:39:59.600646+00:00",
+      "policy_id": "P4",
+      "policy_action": "patch",
+      "provenance_mode": "recorded",
+      "gate_flag": false,
+      "usage": {
+        "input_tokens": 1333,
+        "output_tokens": 79,
+        "total_tokens": 1412,
+        "input_token_details": {
+          "cache_creation": 0,
+          "cache_read": 0
+        }
+      },
+      "wall_s": 2.1
+    },
+    {
+      "schema_version": "exec_record/2",
+      "step_id": 1,
+      "action": {
+        "name": "open_file",
+        "args": {
+          "path": "astropy/modeling/separable.py",
+          "start": 100,
+          "end": 317
+        },
+        "thought": ""
+      },
+      "observation": "astropy/modeling/separable.py lines 100-317 of 317\n   100|     separable_matrix = _separable(transform)\n   101|     separable_matrix = np.where(separable_matrix != 0, True, False)\n   102|     return separable_matrix\n   103| \n   104| \n   105| def _compute_n_outputs(left, right):\n   106|     \"\"\"\n   107|     Compute the number of outputs of two models.\n   108| \n   109|     The two models are the left and right model to an operation in\n   110|     the expression tree of a compound model.\n   111| \n   112|     Parameters\n   113|     ----------\n   114|     left, right : `astropy.modeling.Model` or ndarray\n   115|         If input is of an array, it is the output of `coord_matrix`.\n   116| \n   117|     \"\"\"\n   118|     if isinstance(left, Model):\n   119|         lnout = left.n_outputs\n   120|     else:\n   121|         lnout = left.shape[0]\n   122|     if isinstance(right, Model):\n   123|         rnout = right.n_outputs\n   124|     else:\n   125|         rnout = right.shape[0]\n   126|     noutp = lnout + rnout\n   127|     return noutp\n   128| \n   129| \n   130| def _arith_oper(left, right):\n   131|     \"\"\"\n   132|     Function corresponding to one of the arithmetic operators\n   133|     ['+', '-'. '*', '/', '**'].\n   134| \n   135|     This always returns a nonseparable output.\n   136| \n   137| \n   138|     Parameters\n   139|     ----------\n   140|     left, right : `astropy.modeling.Model` or ndarray\n   141|         If input is of an array, it is the output of `coord_matrix`.\n   142| \n   143|     Returns\n   144|     -------\n   145|     result : ndarray\n   146|         Result from this operation.\n   147|     \"\"\"\n   148|     # models have the same number of inputs and outputs\n   149|     def _n_inputs_outputs(input):\n   150|         if isinstance(input, Model):\n   151|             n_outputs, n_inputs = input.n_outputs, input.n_inputs\n   152|         else:\n   153|             n_outputs, n_inputs = input.shape\n   154|         return n_inputs, n_outputs\n   155| \n   156|     left_inputs, left_outputs = _n_inputs_outputs(left)\n   157|     right_inputs, right_outputs = _n_inputs_outputs(right)\n   158| \n   159|     if left_inputs != right_inputs or left_outputs != right_outputs:\n   160|         raise ModelDefinitionError(\n   161|             \"Unsupported operands for arithmetic operator: left (n_inputs={}, \"\n   162|             \"n_outputs={}) and right (n_inputs={}, n_outputs={}); \"\n   163|             \"models must have the same n_inputs and the same \"\n   164|             \"n_outputs for this operator.\".format(\n   165|                 left_inputs, left_outputs, right_inputs, right_outputs))\n   166| \n   167|     result = np.ones((left_outputs, left_inputs))\n   168|     return result\n   169| \n   170| \n   171| def _coord_matrix(model, pos, noutp):\n   172|     \"\"\"\n   173|     Create an array representing inputs and outputs of a simple model.\n   174| \n   175|     The array has a shape (noutp, model.n_inputs).\n   176| \n   177|  \n[truncated at 3000 chars; narrow the request]",
+      "timestamp": "2026-08-11T03:40:01.467820+00:00",
+      "policy_id": "P4",
+      "policy_action": "patch",
+      "provenance_mode": "recorded",
+      "gate_flag": false,
+      "usage": {
+        "input_tokens": 2433,
+        "output_tokens": 86,
+        "total_tokens": 2519,
+        "input_token_details": {
+          "cache_creation": 0,
+          "cache_read": 0
+        }
+      },
+      "wall_s": 1.87
+    },
+    {
+      "schema_version": "exec_record/2",
+      "step_id": 2,
+      "action": {
+        "name": "open_file",
+        "args": {
+          "path": "astropy/modeling/separable.py",
+          "start": 200,
+          "end": 317
+        },
+        "thought": ""
+      },
+      "observation": "astropy/modeling/separable.py lines 200-317 of 317\n   200|             mat[-model.n_outputs:, -model.n_inputs:] = m\n   201|         return mat\n   202|     if not model.separable:\n   203|         # this does not work for more than 2 coordinates\n   204|         mat = np.zeros((noutp, model.n_inputs))\n   205|         if pos == 'left':\n   206|             mat[:model.n_outputs, : model.n_inputs] = 1\n   207|         else:\n   208|             mat[-model.n_outputs:, -model.n_inputs:] = 1\n   209|     else:\n   210|         mat = np.zeros((noutp, model.n_inputs))\n   211| \n   212|         for i in range(model.n_inputs):\n   213|             mat[i, i] = 1\n   214|         if pos == 'right':\n   215|             mat = np.roll(mat, (noutp - model.n_outputs))\n   216|     return mat\n   217| \n   218| \n   219| def _cstack(left, right):\n   220|     \"\"\"\n   221|     Function corresponding to '&' operation.\n   222| \n   223|     Parameters\n   224|     ----------\n   225|     left, right : `astropy.modeling.Model` or ndarray\n   226|         If input is of an array, it is the output of `coord_matrix`.\n   227| \n   228|     Returns\n   229|     -------\n   230|     result : ndarray\n   231|         Result from this operation.\n   232| \n   233|     \"\"\"\n   234|     noutp = _compute_n_outputs(left, right)\n   235| \n   236|     if isinstance(left, Model):\n   237|         cleft = _coord_matrix(left, 'left', noutp)\n   238|     else:\n   239|         cleft = np.zeros((noutp, left.shape[1]))\n   240|         cleft[: left.shape[0], : left.shape[1]] = left\n   241|     if isinstance(right, Model):\n   242|         cright = _coord_matrix(right, 'right', noutp)\n   243|     else:\n   244|         cright = np.zeros((noutp, right.shape[1]))\n   245|         cright[-right.shape[0]:, -right.shape[1]:] = 1\n   246| \n   247|     return np.hstack([cleft, cright])\n   248| \n   249| \n   250| def _cdot(left, right):\n   251|     \"\"\"\n   252|     Function corresponding to \"|\" operation.\n   253| \n   254|     Parameters\n   255|     ----------\n   256|     left, right : `astropy.modeling.Model` or ndarray\n   257|         If input is of an array, it is the output of `coord_matrix`.\n   258| \n   259|     Returns\n   260|     -------\n   261|     result : ndarray\n   262|         Result from this operation.\n   263|     \"\"\"\n   264| \n   265|     left, right = right, left\n   266| \n   267|     def _n_inputs_outputs(input, position):\n   268|         \"\"\"\n   269|         Return ``n_inputs``, ``n_outputs`` for a model or coord_matrix.\n   270|         \"\"\"\n   271|         if isinstance(input, Model):\n   272|             coords = _coord_matrix(input, position, input.n_outputs)\n   273|         else:\n   274|             coords = input\n   275|         return coords\n   276| \n   277|     cleft = _n_inputs_outputs(left, 'left')\n   278|     cright = _n_inputs_outputs(right, 'right')\n   279| \n   280|     try:\n   281|         result = np.dot(cleft, cright)\n   282|     except ValueError:\n   283|       \n[truncated at 3000 chars; narrow the request]",
+      "timestamp": "2026-08-11T03:40:03.398116+00:00",
+      "policy_id": "P4",
+      "policy_action": "patch",
+      "provenance_mode": "recorded",
+      "gate_flag": false,
+      "usage": {
+        "input_tokens": 3496,
+        "output_tokens": 86,
+        "total_tokens": 3582,
+        "input_token_details": {
+          "cache_creation": 0,
+          "cache_read": 0
+        }
+      },
+      "wall_s": 1.93
+    },
+    {
+      "schema_version": "exec_record/2",
+      "step_id": 3,
+      "action": {
+        "name": "open_file",
+        "args": {
+          "path": "astropy/modeling/separable.py",
+          "start": 283,
+          "end": 317
+        },
+        "thought": ""
+      },
+      "observation": "astropy/modeling/separable.py lines 283-317 of 317\n   283|         raise ModelDefinitionError(\n   284|             'Models cannot be combined with the \"|\" operator; '\n   285|             'left coord_matrix is {}, right coord_matrix is {}'.format(\n   286|                 cright, cleft))\n   287|     return result\n   288| \n   289| \n   290| def _separable(transform):\n   291|     \"\"\"\n   292|     Calculate the separability of outputs.\n   293| \n   294|     Parameters\n   295|     ----------\n   296|     transform : `astropy.modeling.Model`\n   297|         A transform (usually a compound model).\n   298| \n   299|     Returns :\n   300|     is_separable : ndarray of dtype np.bool\n   301|         An array of shape (transform.n_outputs,) of boolean type\n   302|         Each element represents the separablity of the corresponding output.\n   303|     \"\"\"\n   304|     if (transform_matrix := transform._calculate_separability_matrix()) is not NotImplemented:\n   305|         return transform_matrix\n   306|     elif isinstance(transform, CompoundModel):\n   307|         sepleft = _separable(transform.left)\n   308|         sepright = _separable(transform.right)\n   309|         return _operators[transform.op](sepleft, sepright)\n   310|     elif isinstance(transform, Model):\n   311|         return _coord_matrix(transform, 'left', transform.n_outputs)\n   312| \n   313| \n   314| # Maps modeling operators to a function computing and represents the\n   315| # relationship of axes as an array of 0-es and 1-s\n   316| _operators = {'&': _cstack, '|': _cdot, '+': _arith_oper, '-': _arith_oper,\n   317|               '*': _arith_oper, '/': _arith_oper, '**': _arith_oper}",
+      "timestamp": "2026-08-11T03:40:06.810806+00:00",
+      "policy_id": "P4",
+      "policy_action": "patch",
+      "provenance_mode": "recorded",
+      "gate_flag": false,
+      "usage": {
+        "input_tokens": 4621,
+        "output_tokens": 86,
+        "total_tokens": 4707,
+        "input_token_details": {
+          "cache_creation": 0,
+          "cache_read": 0
+        }
+      },
+      "wall_s": 3.41
+    },
+    {
+      "schema_version": "exec_record/2",
+      "step_id": 4,
+      "action": {
+        "name": "edit_file",
+        "args": {
+          "path": "astropy/modeling/separable.py",
+          "old": "        cright = np.zeros((noutp, right.shape[1]))\n        cright[-right.shape[0]:, -right.shape[1]:] = 1",
+          "new": "        cright = np.zeros((noutp, right.shape[1]))\n        cright[-right.shape[0]:, -right.shape[1]:] = right"
+        },
+        "thought": "Now I can see the bug. In `_cstack`, when the `right` operand is already an ndarray (i.e., it's the result of a recursive `_separable` call on a nested `CompoundModel`), line 245 incorrectly fills the block with `1` instead of the actual values from `right`:\n\n```python\ncright[-right.shape[0]:, -right.shape[1]:] = 1  # BUG: should be `right`, not `1`\n```\n\nThis means that when a nested `CompoundModel` is on the right side of `&`, its separability matrix is replaced with an all-ones block, destroying the separability information."
+      },
+      "observation": "edit applied to astropy/modeling/separable.py at line 244",
+      "timestamp": "2026-08-11T03:40:12.802483+00:00",
+      "policy_id": "P4",
+      "policy_action": "patch",
+      "provenance_mode": "recorded",
+      "gate_flag": false,
+      "usage": {
+        "input_tokens": 5226,
+        "output_tokens": 321,
+        "total_tokens": 5547,
+        "input_token_details": {
+          "cache_creation": 0,
+          "cache_read": 0
+        }
+      },
+      "wall_s": 5.99
+    },
+    {
+      "schema_version": "exec_record/2",
+      "step_id": 5,
+      "action": {
+        "name": "open_file",
+        "args": {
+          "path": "astropy/modeling/separable.py",
+          "start": 219,
+          "end": 248
+        },
+        "thought": "Let me verify the fix looks correct in context:"
+      },
+      "observation": "astropy/modeling/separable.py lines 219-248 of 317\n   219| def _cstack(left, right):\n   220|     \"\"\"\n   221|     Function corresponding to '&' operation.\n   222| \n   223|     Parameters\n   224|     ----------\n   225|     left, right : `astropy.modeling.Model` or ndarray\n   226|         If input is of an array, it is the output of `coord_matrix`.\n   227| \n   228|     Returns\n   229|     -------\n   230|     result : ndarray\n   231|         Result from this operation.\n   232| \n   233|     \"\"\"\n   234|     noutp = _compute_n_outputs(left, right)\n   235| \n   236|     if isinstance(left, Model):\n   237|         cleft = _coord_matrix(left, 'left', noutp)\n   238|     else:\n   239|         cleft = np.zeros((noutp, left.shape[1]))\n   240|         cleft[: left.shape[0], : left.shape[1]] = left\n   241|     if isinstance(right, Model):\n   242|         cright = _coord_matrix(right, 'right', noutp)\n   243|     else:\n   244|         cright = np.zeros((noutp, right.shape[1]))\n   245|         cright[-right.shape[0]:, -right.shape[1]:] = right\n   246| \n   247|     return np.hstack([cleft, cright])\n   248| ",
+      "timestamp": "2026-08-11T03:40:15.707060+00:00",
+      "policy_id": "P4",
+      "policy_action": "patch",
+      "provenance_mode": "recorded",
+      "gate_flag": false,
+      "usage": {
+        "input_tokens": 5584,
+        "output_tokens": 97,
+        "total_tokens": 5681,
+        "input_token_details": {
+          "cache_creation": 0,
+          "cache_read": 0
+        }
+      },
+      "wall_s": 2.89
+    },
+    {
+      "schema_version": "exec_record/2",
+      "step_id": 6,
+      "action": {
+        "name": "policy_complete",
+        "args": {
+          "summary": "Fixed the one-line bug in `_cstack` in `astropy/modeling/separable.py` where `cright[-right.shape[0]:, -right.shape[1]:] = 1` was changed to `= right`, so that when the right operand of `&` is already a computed separability matrix (ndarray), its actual values are preserved instead of being overwritten with all-ones."
+        },
+        "thought": "The fix is correct and consistent with how `left` is handled (line 240 uses `left`, not `1`). The bug was a clear copy-paste error where the right-hand block was filled with the scalar `1` instead of the actual matrix values from `right`."
+      },
+      "observation": "recorded. CURRENT POLICY (2 of 3):\n{\n  \"id\": \"P5\",\n  \"parent_id\": \"P3.2\",\n  \"level\": \"imperative\",\n  \"definer\": \"assurance engine\",\n  \"enforcer\": \"Execute\",\n  \"action\": \"add\",\n  \"constraints\": {\n    \"resource\": \"unit tests asserting correct separability matrices for nested CompoundModels\",\n    \"spatial\": \"astropy/modeling/tests/test_separable.py\",\n    \"temporal\": \"always\"\n  },\n  \"context\": \"production\",\n  \"rationale\": \"Add concrete test cases (e.g., separability_matrix(Pix2Sky_TAN() & (Linear1D(10) & Linear1D(5))) == expected diagonal-block matrix) to the test suite so the fix is verified and future regressions are caught automatically.\"\n}",
+      "timestamp": "2026-08-11T03:40:21.328268+00:00",
+      "policy_id": "P4",
+      "policy_action": "patch",
+      "provenance_mode": "recorded",
+      "gate_flag": false,
+      "usage": {
+        "input_tokens": 6082,
+        "output_tokens": 195,
+        "total_tokens": 6277,
+        "input_token_details": {
+          "cache_creation": 0,
+          "cache_read": 0
+        }
+      },
+      "wall_s": 5.62
+    },
+    {
+      "schema_version": "exec_record/2",
+      "step_id": 7,
+      "action": {
+        "name": "open_file",
+        "args": {
+          "path": "astropy/modeling/tests/test_separable.py",
+          "end": 200
+        },
+        "thought": "Now let me look at the existing test file to understand its structure before adding new tests."
+      },
+      "observation": "astropy/modeling/tests/test_separable.py lines 1-150 of 150\n     1| # Licensed under a 3-clause BSD style license - see LICENSE.rst\n     2| \"\"\"\n     3| Test separability of models.\n     4| \n     5| \"\"\"\n     6| # pylint: disable=invalid-name\n     7| import pytest\n     8| import numpy as np\n     9| from numpy.testing import assert_allclose\n    10| \n    11| from astropy.modeling import custom_model, models\n    12| from astropy.modeling.models import Mapping\n    13| from astropy.modeling.separable import (_coord_matrix, is_separable, _cdot,\n    14|                                         _cstack, _arith_oper, separability_matrix)\n    15| from astropy.modeling.core import ModelDefinitionError\n    16| \n    17| \n    18| sh1 = models.Shift(1, name='shift1')\n    19| sh2 = models.Shift(2, name='sh2')\n    20| scl1 = models.Scale(1, name='scl1')\n    21| scl2 = models.Scale(2, name='scl2')\n    22| map1 = Mapping((0, 1, 0, 1), name='map1')\n    23| map2 = Mapping((0, 0, 1), name='map2')\n    24| map3 = Mapping((0, 0), name='map3')\n    25| rot = models.Rotation2D(2, name='rotation')\n    26| p2 = models.Polynomial2D(1, name='p2')\n    27| p22 = models.Polynomial2D(2, name='p22')\n    28| p1 = models.Polynomial1D(1, name='p1')\n    29| \n    30| \n    31| compound_models = {\n    32|     'cm1': (map3 & sh1 | rot & sh1 | sh1 & sh2 & sh1,\n    33|             (np.array([False, False, True]),\n    34|              np.array([[True, False], [True, False], [False, True]]))\n    35|             ),\n    36|     'cm2': (sh1 & sh2 | rot | map1 | p2 & p22,\n    37|             (np.array([False, False]),\n    38|              np.array([[True, True], [True, True]]))\n    39|             ),\n    40|     'cm3': (map2 | rot & scl1,\n    41|             (np.array([False, False, True]),\n    42|              np.array([[True, False], [True, False], [False, True]]))\n    43|             ),\n    44|     'cm4': (sh1 & sh2 | map2 | rot & scl1,\n    45|             (np.array([False, False, True]),\n    46|              np.array([[True, False], [True, False], [False, True]]))\n    47|             ),\n    48|     'cm5': (map3 | sh1 & sh2 | scl1 & scl2,\n    49|             (np.array([False, False]),\n    50|              np.array([[True], [True]]))\n    51|             ),\n    52|     'cm7': (map2 | p2 & sh1,\n    53|             (np.array([False, True]),\n    54|              np.array([[True, False], [False, True]]))\n    55|             )\n    56| }\n    57| \n    58| \n    59| def test_coord_matrix():\n    60|     c = _coord_matrix(p2, 'left', 2)\n    61|     assert_allclose(np.array([[1, 1], [0, 0]]), c)\n    62|     c = _coord_matrix(p2, 'right', 2)\n    63|     assert_allclose(np.array([[0, 0], [1, 1]]), c)\n    64|     c = _coord_matrix(p1, 'left', 2)\n    65|     assert_allclose(np.array([[1], [0]]), c)\n    66|     c = _coord_matrix(p1, 'left', 1)\n    67|     assert_allclose(np.array([[1]]), c)\n    68|     c = _coord_matrix(sh1, 'left', 2)\n    69|     assert_allclose(np.array\n[truncated at 3000 chars; narrow the request]",
+      "timestamp": "2026-08-11T03:40:24.116447+00:00",
+      "policy_id": "P5",
+      "policy_action": "add",
+      "provenance_mode": "recorded",
+      "gate_flag": false,
+      "usage": {
+        "input_tokens": 6509,
+        "output_tokens": 92,
+        "total_tokens": 6601,
+        "input_token_details": {
+          "cache_creation": 0,
+          "cache_read": 0
+        }
+      },
+      "wall_s": 2.77
+    },
+    {
+      "schema_version": "exec_record/2",
+      "step_id": 8,
+      "action": {
+        "name": "open_file",
+        "args": {
+          "path": "astropy/modeling/tests/test_separable.py",
+          "start": 100,
+          "end": 150
+        },
+        "thought": ""
+      },
+      "observation": "astropy/modeling/tests/test_separable.py lines 100-150 of 150\n   100|     assert_allclose(result, np.array([[1, 0], [0, 1]]))\n   101| \n   102|     result = _cstack(sh1, rot)\n   103|     assert_allclose(result,\n   104|                     np.array([[1, 0, 0],\n   105|                               [0, 1, 1],\n   106|                               [0, 1, 1]])\n   107|                     )\n   108|     result = _cstack(rot, sh1)\n   109|     assert_allclose(result,\n   110|                     np.array([[1, 1, 0],\n   111|                               [1, 1, 0],\n   112|                               [0, 0, 1]])\n   113|                     )\n   114| \n   115| \n   116| def test_arith_oper():\n   117|     # Models as inputs\n   118|     result = _arith_oper(sh1, scl1)\n   119|     assert_allclose(result, np.array([[1]]))\n   120|     result = _arith_oper(rot, rot)\n   121|     assert_allclose(result, np.array([[1, 1], [1, 1]]))\n   122| \n   123|     # ndarray\n   124|     result = _arith_oper(np.array([[1, 2], [3, 4]]), np.array([[1, 2], [3, 4]]))\n   125|     assert_allclose(result, np.array([[1, 1], [1, 1]]))\n   126| \n   127|     # Error\n   128|     with pytest.raises(ModelDefinitionError, match=r\"Unsupported operands for arithmetic operator: .*\"):\n   129|         _arith_oper(sh1, map1)\n   130| \n   131| \n   132| @pytest.mark.parametrize(('compound_model', 'result'), compound_models.values())\n   133| def test_separable(compound_model, result):\n   134|     assert_allclose(is_separable(compound_model), result[0])\n   135|     assert_allclose(separability_matrix(compound_model), result[1])\n   136| \n   137| \n   138| def test_custom_model_separable():\n   139|     @custom_model\n   140|     def model_a(x):\n   141|         return x\n   142| \n   143|     assert model_a().separable\n   144| \n   145|     @custom_model\n   146|     def model_c(x, y):\n   147|         return x + y\n   148| \n   149|     assert not model_c().separable\n   150|     assert np.all(separability_matrix(model_c()) == [True, True])",
+      "timestamp": "2026-08-11T03:40:27.009551+00:00",
+      "policy_id": "P5",
+      "policy_action": "add",
+      "provenance_mode": "recorded",
+      "gate_flag": false,
+      "usage": {
+        "input_tokens": 7775,
+        "output_tokens": 90,
+        "total_tokens": 7865,
+        "input_token_details": {
+          "cache_creation": 0,
+          "cache_read": 0
+        }
+      },
+      "wall_s": 2.89
+    },
+    {
+      "schema_version": "exec_record/2",
+      "step_id": 9,
+      "action": {
+        "name": "edit_file",
+        "args": {
+          "path": "astropy/modeling/tests/test_separable.py",
+          "old": "    'cm7': (map2 | p2 & sh1,\n            (np.array([False, True]),\n             np.array([[True, False], [False, True]]))\n            )\n}",
+          "new": "    'cm7': (map2 | p2 & sh1,\n            (np.array([False, True]),\n             np.array([[True, False], [False, True]]))\n            ),\n    'cm8': (models.Pix2Sky_TAN() & (models.Linear1D(10) & models.Linear1D(5)),\n            (np.array([False, False, True, True]),\n             np.array([[True,  True,  False, False],\n                       [True,  True,  False, False],\n                       [False, False, True,  False],\n                       [False, False, False, True]]))\n            ),\n    'cm9': ((models.Linear1D(10) & models.Linear1D(5)) & models.Pix2Sky_TAN(),\n            (np.array([True, True, False, False]),\n             np.array([[True,  False, False, False],\n                       [False, True,  False, False],\n                       [False, False, True,  True],\n                       [False, False, True,  True]]))\n            ),\n}"
+        },
+        "thought": "Now I have a clear picture of the test structure. I'll add test cases for nested `CompoundModel` separability to the `compound_models` dict and also add a dedicated regression test function."
+      },
+      "observation": "edit applied to astropy/modeling/tests/test_separable.py at line 52",
+      "timestamp": "2026-08-11T03:40:35.315709+00:00",
+      "policy_id": "P5",
+      "policy_action": "add",
+      "provenance_mode": "recorded",
+      "gate_flag": false,
+      "usage": {
+        "input_tokens": 8623,
+        "output_tokens": 447,
+        "total_tokens": 9070,
+        "input_token_details": {
+          "cache_creation": 0,
+          "cache_read": 0
+        }
+      },
+      "wall_s": 8.3
+    },
+    {
+      "schema_version": "exec_record/2",
+      "step_id": 10,
+      "action": {
+        "name": "open_file",
+        "args": {
+          "path": "astropy/modeling/tests/test_separable.py",
+          "start": 31,
+          "end": 80
+        },
+        "thought": "Now let me verify the additions look correct in context:"
+      },
+      "observation": "astropy/modeling/tests/test_separable.py lines 31-80 of 164\n    31| compound_models = {\n    32|     'cm1': (map3 & sh1 | rot & sh1 | sh1 & sh2 & sh1,\n    33|             (np.array([False, False, True]),\n    34|              np.array([[True, False], [True, False], [False, True]]))\n    35|             ),\n    36|     'cm2': (sh1 & sh2 | rot | map1 | p2 & p22,\n    37|             (np.array([False, False]),\n    38|              np.array([[True, True], [True, True]]))\n    39|             ),\n    40|     'cm3': (map2 | rot & scl1,\n    41|             (np.array([False, False, True]),\n    42|              np.array([[True, False], [True, False], [False, True]]))\n    43|             ),\n    44|     'cm4': (sh1 & sh2 | map2 | rot & scl1,\n    45|             (np.array([False, False, True]),\n    46|              np.array([[True, False], [True, False], [False, True]]))\n    47|             ),\n    48|     'cm5': (map3 | sh1 & sh2 | scl1 & scl2,\n    49|             (np.array([False, False]),\n    50|              np.array([[True], [True]]))\n    51|             ),\n    52|     'cm7': (map2 | p2 & sh1,\n    53|             (np.array([False, True]),\n    54|              np.array([[True, False], [False, True]]))\n    55|             ),\n    56|     'cm8': (models.Pix2Sky_TAN() & (models.Linear1D(10) & models.Linear1D(5)),\n    57|             (np.array([False, False, True, True]),\n    58|              np.array([[True,  True,  False, False],\n    59|                        [True,  True,  False, False],\n    60|                        [False, False, True,  False],\n    61|                        [False, False, False, True]]))\n    62|             ),\n    63|     'cm9': ((models.Linear1D(10) & models.Linear1D(5)) & models.Pix2Sky_TAN(),\n    64|             (np.array([True, True, False, False]),\n    65|              np.array([[True,  False, False, False],\n    66|                        [False, True,  False, False],\n    67|                        [False, False, True,  True],\n    68|                        [False, False, True,  True]]))\n    69|             ),\n    70| }\n    71| \n    72| \n    73| def test_coord_matrix():\n    74|     c = _coord_matrix(p2, 'left', 2)\n    75|     assert_allclose(np.array([[1, 1], [0, 0]]), c)\n    76|     c = _coord_matrix(p2, 'right', 2)\n    77|     assert_allclose(np.array([[0, 0], [1, 1]]), c)\n    78|     c = _coord_matrix(p1, 'left', 2)\n    79|     assert_allclose(np.array([[1], [0]]), c)\n    80|     c = _coord_matrix(p1, 'left', 1)",
+      "timestamp": "2026-08-11T03:40:37.769813+00:00",
+      "policy_id": "P5",
+      "policy_action": "add",
+      "provenance_mode": "recorded",
+      "gate_flag": false,
+      "usage": {
+        "input_tokens": 9111,
+        "output_tokens": 102,
+        "total_tokens": 9213,
+        "input_token_details": {
+          "cache_creation": 0,
+          "cache_read": 0
+        }
+      },
+      "wall_s": 2.44
+    },
+    {
+      "schema_version": "exec_record/2",
+      "step_id": 11,
+      "action": {
+        "name": "policy_complete",
+        "args": {
+          "summary": "Added two new parametrized test cases (`cm8` and `cm9`) to `compound_models` in `astropy/modeling/tests/test_separable.py` that assert correct block-diagonal separability matrices for nested CompoundModels (`Pix2Sky_TAN() & (Linear1D(10) & Linear1D(5))` and its mirror), directly covering the reported regression."
+        },
+        "thought": "The test cases look correct. Let me also verify the exact issue from the bug report is covered — `m.Pix2Sky_TAN() & cm` where `cm = m.Linear1D(10) & m.Linear1D(5)` — which is exactly `cm8`."
+      },
+      "observation": "recorded. CURRENT POLICY (3 of 3):\n{\n  \"id\": \"P6\",\n  \"parent_id\": \"P4\",\n  \"level\": \"imperative\",\n  \"definer\": \"assurance engine\",\n  \"enforcer\": \"Execute\",\n  \"action\": \"validate\",\n  \"constraints\": {\n    \"resource\": \"full astropy.modeling test suite output\",\n    \"spatial\": \"astropy/modeling/\",\n    \"temporal\": \"always\"\n  },\n  \"context\": \"production\",\n  \"rationale\": \"After patching, run the full modeling test suite to confirm no existing tests are broken and the new regression tests pass, ensuring the fix is both correct and non-breaking.\"\n}",
+      "timestamp": "2026-08-11T03:40:43.768921+00:00",
+      "policy_id": "P5",
+      "policy_action": "add",
+      "provenance_mode": "recorded",
+      "gate_flag": false,
+      "usage": {
+        "input_tokens": 10135,
+        "output_tokens": 198,
+        "total_tokens": 10333,
+        "input_token_details": {
+          "cache_creation": 0,
+          "cache_read": 0
+        }
+      },
+      "wall_s": 6.0
+    },
+    {
+      "schema_version": "exec_record/2",
+      "step_id": 12,
+      "action": {
+        "name": "open_file",
+        "args": {
+          "path": "astropy/modeling/separable.py",
+          "start": 219,
+          "end": 248
+        },
+        "thought": "Let me do a thorough static validation by re-reading the fix and the new tests to confirm correctness."
+      },
+      "observation": "astropy/modeling/separable.py lines 219-248 of 317\n   219| def _cstack(left, right):\n   220|     \"\"\"\n   221|     Function corresponding to '&' operation.\n   222| \n   223|     Parameters\n   224|     ----------\n   225|     left, right : `astropy.modeling.Model` or ndarray\n   226|         If input is of an array, it is the output of `coord_matrix`.\n   227| \n   228|     Returns\n   229|     -------\n   230|     result : ndarray\n   231|         Result from this operation.\n   232| \n   233|     \"\"\"\n   234|     noutp = _compute_n_outputs(left, right)\n   235| \n   236|     if isinstance(left, Model):\n   237|         cleft = _coord_matrix(left, 'left', noutp)\n   238|     else:\n   239|         cleft = np.zeros((noutp, left.shape[1]))\n   240|         cleft[: left.shape[0], : left.shape[1]] = left\n   241|     if isinstance(right, Model):\n   242|         cright = _coord_matrix(right, 'right', noutp)\n   243|     else:\n   244|         cright = np.zeros((noutp, right.shape[1]))\n   245|         cright[-right.shape[0]:, -right.shape[1]:] = right\n   246| \n   247|     return np.hstack([cleft, cright])\n   248| ",
+      "timestamp": "2026-08-11T03:40:46.947395+00:00",
+      "policy_id": "P6",
+      "policy_action": "validate",
+      "provenance_mode": "recorded",
+      "gate_flag": false,
+      "usage": {
+        "input_tokens": 10521,
+        "output_tokens": 110,
+        "total_tokens": 10631,
+        "input_token_details": {
+          "cache_creation": 0,
+          "cache_read": 0
+        }
+      },
+      "wall_s": 3.18
+    },
+    {
+      "schema_version": "exec_record/2",
+      "step_id": 13,
+      "action": {
+        "name": "search_repo",
+        "args": {
+          "term": "_cstack"
+        },
+        "thought": "Now let me trace through the logic manually to confirm the fix is correct for the reported case:\n\n- `cm = Linear1D(10) & Linear1D(5)` → `_separable(cm)` returns a 2×2 identity matrix `[[1,0],[0,1]]`\n- `Pix2Sky_TAN() & cm` → `_cstack(Pix2Sky_TAN(), [[1,0],[0,1]])`\n  - `noutp = 2 + 2 = 4`\n  - `left` is a Model → `cleft = _coord_matrix(Pix2Sky_TAN(), 'left', 4)` → `[[1,1],[1,1],[0,0],[0,0]]`\n  - `right` is ndarray (shape 2×2) → `cright = zeros(4,2)`, then `cright[-2:, -2:] = [[1,0],[0,1]]` → `[[0,0],[0,0],[1,0],[0,1]]`\n  - `hstack([[1,1],[1,1],[0,0],[0,0]], [[0,0],[0,0],[1,0],[0,1]])` → `[[1,1,0,0],[1,1,0,0],[0,0,1,0],[0,0,0,1]]` ✓\n\nBefore the fix, `cright[-2:, -2:] = 1` would give `[[0,0],[0,0],[1,1],[1,1]]`, producing the wrong `[[1,1,0,0],[1,1,0,0],[0,0,1,1],[0,0,1,1]]` — exactly the bug reported.\n\nLet me also check that no other tests in the modeling suite reference `_cstack` in a way that might be affected:"
+      },
+      "observation": "astropy/modeling/separable.py:219: def _cstack(left, right):\nastropy/modeling/separable.py:316: _operators = {'&': _cstack, '|': _cdot, '+': _arith_oper, '-': _arith_oper,\nastropy/modeling/tests/test_separable.py:14: _cstack, _arith_oper, separability_matrix)\nastropy/modeling/tests/test_separable.py:112: def test_cstack():\nastropy/modeling/tests/test_separable.py:113: result = _cstack(sh1, scl1)\nastropy/modeling/tests/test_separable.py:116: result = _cstack(sh1, rot)\nastropy/modeling/tests/test_separable.py:122: result = _cstack(rot, sh1)",
+      "timestamp": "2026-08-11T03:41:04.566764+00:00",
+      "policy_id": "P6",
+      "policy_action": "validate",
+      "provenance_mode": "recorded",
+      "gate_flag": false,
+      "usage": {
+        "input_tokens": 11032,
+        "output_tokens": 491,
+        "total_tokens": 11523,
+        "input_token_details": {
+          "cache_creation": 0,
+          "cache_read": 0
+        }
+      },
+      "wall_s": 9.43
+    },
+    {
+      "schema_version": "exec_record/2",
+      "step_id": 14,
+      "action": {
+        "name": "open_file",
+        "args": {
+          "path": "astropy/modeling/tests/test_separable.py",
+          "start": 112,
+          "end": 135
+        },
+        "thought": ""
+      },
+      "observation": "astropy/modeling/tests/test_separable.py lines 112-135 of 164\n   112| def test_cstack():\n   113|     result = _cstack(sh1, scl1)\n   114|     assert_allclose(result, np.array([[1, 0], [0, 1]]))\n   115| \n   116|     result = _cstack(sh1, rot)\n   117|     assert_allclose(result,\n   118|                     np.array([[1, 0, 0],\n   119|                               [0, 1, 1],\n   120|                               [0, 1, 1]])\n   121|                     )\n   122|     result = _cstack(rot, sh1)\n   123|     assert_allclose(result,\n   124|                     np.array([[1, 1, 0],\n   125|                               [1, 1, 0],\n   126|                               [0, 0, 1]])\n   127|                     )\n   128| \n   129| \n   130| def test_arith_oper():\n   131|     # Models as inputs\n   132|     result = _arith_oper(sh1, scl1)\n   133|     assert_allclose(result, np.array([[1]]))\n   134|     result = _arith_oper(rot, rot)\n   135|     assert_allclose(result, np.array([[1, 1], [1, 1]]))",
+      "timestamp": "2026-08-11T03:41:06.471512+00:00",
+      "policy_id": "P6",
+      "policy_action": "validate",
+      "provenance_mode": "recorded",
+      "gate_flag": false,
+      "usage": {
+        "input_tokens": 11754,
+        "output_tokens": 90,
+        "total_tokens": 11844,
+        "input_token_details": {
+          "cache_creation": 0,
+          "cache_read": 0
+        }
+      },
+      "wall_s": 1.9
+    },
+    {
+      "schema_version": "exec_record/2",
+      "step_id": 15,
+      "action": {
+        "name": "done",
+        "args": {
+          "summary": "Fixed the one-character bug in `_cstack` in `astropy/modeling/separable.py` where `cright[-right.shape[0]:, -right.shape[1]:] = 1` was corrected to `= right`, so that when the right operand of `&` is already a computed separability matrix (ndarray from a nested CompoundModel), its actual values are preserved instead of being overwritten with all-ones; two regression test cases (`cm8`, `cm9`) were also added to `astropy/modeling/tests/test_separable.py`."
+        },
+        "thought": "All existing `_cstack` tests pass only `Model` instances (not ndarrays), so the `else` branch (which contained the bug) was never exercised by existing tests. The fix only changes behaviour when `right` is an ndarray, which is the nested-CompoundModel case."
+      },
+      "observation": "submitted: Fixed the one-character bug in `_cstack` in `astropy/modeling/separable.py` where `cright[-right.shape[0]:, -right.shape[1]:] = 1` was corrected to `= right`, so that when the right operand of `&` is already a computed separability matrix (ndarray from a nested CompoundModel), its actual values are preserved instead of being overwritten with all-ones; two regression test cases (`cm8`, `cm9`) were also added to `astropy/modeling/tests/test_separable.py`.",
+      "timestamp": "2026-08-11T03:41:11.996799+00:00",
+      "policy_id": "P6",
+      "policy_action": "validate",
+      "provenance_mode": "recorded",
+      "gate_flag": false,
+      "usage": {
+        "input_tokens": 12231,
+        "output_tokens": 237,
+        "total_tokens": 12468,
+        "input_token_details": {
+          "cache_creation": 0,
+          "cache_read": 0
+        }
+      },
+      "wall_s": 5.52
+    }
+  ]
+}

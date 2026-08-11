@@ -157,6 +157,9 @@ just concluded, does the deed inside it, and credits the deed's policy
 to the next look. Not a binding artifact, not a format problem. The
 one v4 consolation: the echo makes these self-documenting, since
 "decide" sitting on an edit flags itself without a manual walk.
+Resolution note: see OB-25; under system-stamped dispatch the same
+model's source edit lands under P4, so the lag is a property of
+self-report, not of the work.
 
 ## OB-08 the executor added a step the plan never asked for
 What happened: Claude on its prose plan self-initiated a verification
@@ -439,7 +442,16 @@ apply cleanly end to end; C's structured test hunk landed at 148, a
 new location for C after three runs at 135, and G's at 113 again);
 noplan C predicted to resolve contingent on the evaluator's fuzz
 fallback, and would fail under a strict-git-apply-only evaluator.
-Cells: all eight phase1v2 canonical exec cells.
+Dispatch extension: dispatch G applies cleanly end to end and is
+predicted to resolve; dispatch C is the first cell where the held-out
+test patch fails BOTH strict git apply and the patch fuzz fallback
+(Claude inserted cm8 and cm9 into the dict at the held-out hunk's
+anchor, and hunk 2 rejects), so dispatch C is predicted UNRESOLVED at
+Docker despite carrying the gold source fix: a benchmark-mechanics
+casualty of the idiomatic in-dict placement, not a defect of the fix.
+This is the campaign's first falsifiable unresolved prediction.
+Cells: all eight phase1v2 canonical exec cells plus both dispatch
+cells.
 Anchor: phase1v2 artifacts, test-edit hunk headers; application
 rehearsal transcript (clone at d16bfe05, apply order, rc values).
 Track: 1, feeds the Docker methodology notes.
@@ -471,6 +483,14 @@ scope of work the plan prescribes, and executor behavior. Any overhead
 claim about a representation must hold the prescribed scope fixed or
 say it did not. This complicates OB-10's structure-costs-tokens
 reading rather than replacing it.
+Dispatch addendum: the imperatives-scope dispatch cells came in at
+C 119,273 (16 turns) and G 96,476 (16 turns) against their whole-plan
+counterparts 122,833 and 96,259. The registered prediction (dispatch
+cheaper because the initial prompt is a quarter the size) held
+marginally for C (2.9 percent under) and failed for G (0.2 percent
+over): the smaller resend is offset by the extra policy_complete
+turns. On this instance dispatch is token-neutral, and it buys full
+attribution for that neutral price.
 Cells: all six phase1v2 canonical exec cells.
 Anchor: phase1v2 artifacts, usage_total fields and record counts per
 cell; plan artifacts for the scope contrast (test wording computed:
@@ -506,3 +526,68 @@ Track: 4, feeds 2.
 Papers: to fill in the lit pass.
 Status: single run per cell; consistent with every elicited cell in
 the ladder by contrast.
+
+
+## OB-25 under system stamping, the edit finally lands on P4
+What happened: across seven elicited structured samples, Claude's
+source edit never carried the patch policy P4; it landed on
+deliberation nodes every time (OB-12), and the no-tag cells showed
+neither model volunteers ids at all (OB-24). The dispatch cell closes
+the loop: with the system stamping the active policy, Claude's source
+edit is recorded under P4 (t04, patch segment turns 0 to 6), the test
+edit under P5, and every one of the 16 records carries an id. The done
+turn is attributed for the first time in the campaign (stamped P6, the
+policy active when it fired), which structurally resolves the
+done-has-no-home problem the tree-shape finding exposed. The work was
+always attributable; the self-report was the failure mode. Recorded
+provenance on all 16 records against 0 of 28 on the reconstructed
+side, live, one instance.
+Cells: dispatch C (imperatives scope, run 1); contrast OB-12's seven
+samples and OB-24's no-tag cells.
+Anchor: dispatch C artifact, t04 edit record policy_id P4, t15 done
+record policy_id P6, provenance_mode recorded on all records;
+policy_transitions turn ranges.
+Track: 4, feeds 2.
+Papers: to fill in the lit pass.
+Status: single run; the contrast legs are seven and two runs deep.
+
+## OB-26 the completion declaration splits the models again
+What happened: the dispatch protocol makes completion a model
+declaration, and the two models used it differently in character with
+OB-13. GPT declared all four policies: work summaries for P4 and P6,
+an honest impossible for P7 (no run capability, stated plainly), and
+P8 realized as a report delivered inside the completion summary
+itself, then a clean post-exhaustion done correctly stamped null.
+Claude declared P4 and P5, then never declared P6: it did three
+verification reads under P6 and substituted done for the final
+policy_complete, leaving P6 activated-but-undeclared and
+remaining_policies at ['P6']. The mis-signaling is not a scoring
+inference; it is timestamped in the transitions log exactly as the
+design intends: mis-timing possible and visible, mislabeling
+impossible.
+Cells: dispatch C, dispatch G (imperatives scope, run 1 each).
+Anchor: dispatch artifacts, policy_transitions (G: four completed
+entries with summaries; C: P6 entry with completed_turn null);
+C t15 done under P6; G t15 done stamped null.
+Track: 2, feeds 4.
+Papers: to fill in the lit pass.
+Status: single run per cell; the category-choice pattern echoes OB-13.
+
+## OB-27 dispatch made the plan's order binding, and the model
+followed it
+What happened: GPT's plan puts the regression test before the source
+fix, and both of GPT's free structured-tree executions swapped that
+order silently. Under dispatch the order is enforced by the feed, and
+GPT complied fully: it authored the regression test at t03 having
+never opened the source file (its first four turns touch only the
+test suite and a search), then received P6 and did the source work.
+Dispatchability is not just a property of the representation; it is a
+control that free execution demonstrably does not provide.
+Cells: dispatch G (imperatives scope, run 1); contrast the two free
+G structured executions and OB-19's order swap.
+Anchor: dispatch G artifact, t00 to t04 all under P4 with the test
+edit at t03 preceding any separable.py open; OB-19 anchors for the
+free-order contrast.
+Track: 1, feeds 2 and 4.
+Papers: to fill in the lit pass.
+Status: single run; the free-order contrast leg is two runs.
