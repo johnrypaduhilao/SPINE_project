@@ -1,0 +1,52 @@
+diff --git a/astropy/modeling/separable.py b/astropy/modeling/separable.py
+index a308e2729..45bea3608 100644
+--- a/astropy/modeling/separable.py
++++ b/astropy/modeling/separable.py
+@@ -242,7 +242,7 @@ def _cstack(left, right):
+         cright = _coord_matrix(right, 'right', noutp)
+     else:
+         cright = np.zeros((noutp, right.shape[1]))
+-        cright[-right.shape[0]:, -right.shape[1]:] = 1
++        cright[-right.shape[0]:, -right.shape[1]:] = right
+ 
+     return np.hstack([cleft, cright])
+ 
+diff --git a/astropy/modeling/tests/test_separable.py b/astropy/modeling/tests/test_separable.py
+index 8dfe5c862..4631802de 100644
+--- a/astropy/modeling/tests/test_separable.py
++++ b/astropy/modeling/tests/test_separable.py
+@@ -148,3 +148,34 @@ def test_custom_model_separable():
+ 
+     assert not model_c().separable
+     assert np.all(separability_matrix(model_c()) == [True, True])
++
++
++def test_separability_matrix_nested_compound():
++    """Regression test for nested CompoundModel separability (GH issue).
++
++    Pix2Sky_TAN() & (Linear1D(10) & Linear1D(5)) must produce the same
++    block-diagonal separability matrix as the flat equivalent
++    Pix2Sky_TAN() & Linear1D(10) & Linear1D(5).
++    """
++    tan = models.Pix2Sky_TAN()
++    lin1 = models.Linear1D(10)
++    lin2 = models.Linear1D(5)
++
++    # Flat compound model (known-good baseline)
++    flat = tan & lin1 & lin2
++    expected = np.array([
++        [True,  True,  False, False],
++        [True,  True,  False, False],
++        [False, False, True,  False],
++        [False, False, False, True],
++    ])
++    assert_allclose(separability_matrix(flat), expected)
++
++    # Nested compound model â€” must give the same result
++    nested = tan & (lin1 & lin2)
++    assert_allclose(separability_matrix(nested), expected)
++
++    # Doubly-nested: (Linear1D & Linear1D) & Linear1D
++    cm = models.Linear1D(10) & models.Linear1D(5)
++    double_nested = tan & cm
++    assert_allclose(separability_matrix(double_nested), expected)

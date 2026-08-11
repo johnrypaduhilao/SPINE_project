@@ -375,13 +375,17 @@ Anchor: phase1v2 00_TRAJECTORY outputs run 2 artifacts, per-record
 action.thought fields (G empty 12/12 in both runs; C substantive on
 9/14 in run 1 and 8/13 in run 2); phase1v2 01_NOPLAN artifacts
 (G empty 13/13, C substantive 7/12); phase1v2 02_UNSTRUCTURED
-artifacts (G empty 14/14, C substantive 4/6).
+artifacts (G empty 14/14, C substantive 4/6); phase1v2 03_STRUCTURED
+artifacts (G empty 14/14 under its own tree with no tag demand, C
+substantive 8/14).
 Track: 2, feeds 4.
 Papers: to fill in the lit pass.
-Status: replicated across trajectory and noplan. The pattern now spans
-four configurations: G at zero thoughts on prose, trajectory (twice),
-and noplan, and at 15/15 only under its tagged tree. GPT explains when
-the instrument demands it and not otherwise.
+Status: resolved by the no-tag structured cells, which isolate
+representation from instruction for the first time. GPT under its own
+policy tree with the tag demand removed: zero thoughts on all 14
+turns. Six no-demand configurations at zero against 15/15 under the
+tagged tree. The articulation was instruction-driven; the tree itself
+never made GPT talk. Claude stays articulate in every configuration.
 
 
 ## OB-21 both executors authored tests with no prompting at all
@@ -429,11 +433,13 @@ end; noplan C fails strict git apply on the test patch (hunk 2 at
 line 52) and succeeds only through the patch fuzz fallback (fuzz 3,
 offset 7), after which the duplicate cm8 dict key resolves in the
 held-out version's favor by literal-order semantics. Docker
-predictions logged: traj C, traj G, noplan G, unstr C, and unstr G
-predicted to resolve; noplan C predicted to resolve contingent on the
-evaluator's fuzz fallback, and would fail under a strict-git-apply-only
-evaluator.
-Cells: all six phase1v2 canonical exec cells.
+predictions logged: traj C, traj G, noplan G, unstr C, unstr G,
+struct C, and struct G predicted to resolve (the structured cells also
+apply cleanly end to end; C's structured test hunk landed at 148, a
+new location for C after three runs at 135, and G's at 113 again);
+noplan C predicted to resolve contingent on the evaluator's fuzz
+fallback, and would fail under a strict-git-apply-only evaluator.
+Cells: all eight phase1v2 canonical exec cells.
 Anchor: phase1v2 artifacts, test-edit hunk headers; application
 rehearsal transcript (clone at d16bfe05, apply order, rc values).
 Track: 1, feeds the Docker methodology notes.
@@ -447,8 +453,13 @@ invert between models
 What happened: with six canonical cells on one harness, the
 cheapest-to-dearest ordering of plan representations is not
 model-stable. Claude: unstructured 27,979 tokens (6 turns), noplan
-69,143 (12), trajectory 178,225 (13). GPT: noplan 73,342 (13),
-trajectory 77,769 (12), unstructured 88,071 (14). The same prose
+69,143 (12), structured no-tag 122,833 (14), trajectory 178,225 (13).
+GPT: noplan 73,342 (13), trajectory 77,769 (12), unstructured 88,071
+(14), structured no-tag 96,259 (14). An informal aside, single runs
+across harness generations so no claim: both no-tag tree cells came in
+below their tagged-tree counterparts from OB-10 (C 122,833 vs 127,649;
+G 96,259 vs 112,982), directionally consistent with the tags
+themselves costing tokens. The same prose
 representation is Claude's cheapest cell and GPT's dearest, and the
 reasons are visible in the runs: Claude's prose plan named the bug
 location and prescribed no tests, so Claude went nearly straight to
@@ -468,3 +479,30 @@ Track: 5, feeds 3 and 1.
 Papers: to fill in the lit pass.
 Status: single run per cell; the inversion is one instance, one run
 each.
+
+
+## OB-24 with ids in context and nothing asking, neither model ever
+cites one
+What happened: the no-tag structured cells hand each executor its own
+full policy tree, ids included, with no tag demand, no prefix demand,
+and no accounting clause. Across all 28 turns (14 per model), neither
+model referenced a policy id even once in any thought (regex sweep
+over every stored thought, zero hits in both cells). Both runs
+otherwise did the work: gold source fix at the gold hunk, regression
+tests authored (C's P5 and G's P4 test policies realized in deeds),
+done reached. So every policy attribution observed anywhere in this
+campaign was elicited, never volunteered, and the recoverability of
+attribution from a no-tag execution is 0.00 not as a scoring outcome
+but as an emergent fact about executor behavior. This is the design
+point stated from the behavioral side: if attribution is wanted, the
+system must produce it, because the model will not, and OB-17 showed
+what the model produces when asked is unstable anyway. System-stamped
+pointers are the remaining option standing.
+Cells: C-struct no-tag, G-struct no-tag (phase1v2).
+Anchor: phase1v2 03_STRUCTURED artifacts, per-record action.thought
+fields, regex sweep for P-id shapes, zero hits; instrument_tail
+"none" and policy_id null on all 28 records.
+Track: 4, feeds 2.
+Papers: to fill in the lit pass.
+Status: single run per cell; consistent with every elicited cell in
+the ladder by contrast.
