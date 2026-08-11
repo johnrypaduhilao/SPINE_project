@@ -442,14 +442,14 @@ apply cleanly end to end; C's structured test hunk landed at 148, a
 new location for C after three runs at 135, and G's at 113 again);
 noplan C predicted to resolve contingent on the evaluator's fuzz
 fallback, and would fail under a strict-git-apply-only evaluator.
-Dispatch extension: dispatch G applies cleanly end to end and is
-predicted to resolve; dispatch C is the first cell where the held-out
-test patch fails BOTH strict git apply and the patch fuzz fallback
-(Claude inserted cm8 and cm9 into the dict at the held-out hunk's
-anchor, and hunk 2 rejects), so dispatch C is predicted UNRESOLVED at
-Docker despite carrying the gold source fix: a benchmark-mechanics
-casualty of the idiomatic in-dict placement, not a defect of the fix.
-This is the campaign's first falsifiable unresolved prediction.
+Dispatch extension: dispatch G applies cleanly in the local check;
+dispatch C's test edits (cm8 and cm9 inserted into the dict) conflict
+with the held-out test patch under a plain local git apply, as noplan
+C's did. These are local git facts about patch overlap only, not
+evaluation. Docker prediction for every cell, dispatch included:
+resolved, on the single basis that each model_patch contains the
+reference one-line source edit. How the evaluator handles model test
+edits is settled by the Docker run itself, not predicted here.
 Cells: all eight phase1v2 canonical exec cells plus both dispatch
 cells.
 Anchor: phase1v2 artifacts, test-edit hunk headers; application
