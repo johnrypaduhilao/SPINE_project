@@ -1,0 +1,4 @@
+reset_backup_astropy__astropy-12907_20260811T021323Z.patch
+--CLAUDE NOPLAN
+reset_backup_astropy__astropy-12907_20260811T021447Z.patch
+--GPT NOPLAN

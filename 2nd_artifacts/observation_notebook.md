@@ -66,7 +66,7 @@ Anchor: notes_exec_vs_plan_findings.md; exec artifacts, plan sections vs
 authored files.
 Track: 1, with a foot in 2.
 Papers: to fill in the lit pass.
-Status: single run.
+Status: single run. Complicated by the noplan cells: see OB-21.
 
 ## OB-04 same model, silent on prose, articulate on its tree
 What happened: GPT wrote zero rationale turns under its prose plan (0 of
@@ -365,11 +365,65 @@ run the chain-of-thought component of the reconstruction material is
 absent entirely, so prose reconstruction works from actions and
 observations only. The baseline description in the paper should say so.
 Cells: G-traj exec, C-traj exec (phase1v2, run 2 canonical; run 1
-archived, first sighting).
+archived, first sighting); G-noplan, C-noplan (phase1v2).
 Anchor: phase1v2 00_TRAJECTORY outputs run 2 artifacts, per-record
 action.thought fields (G empty 12/12 in both runs; C substantive on
-9/14 in run 1 and 8/13 in run 2).
+9/14 in run 1 and 8/13 in run 2); phase1v2 01_NOPLAN artifacts
+(G empty 13/13, C substantive 7/12).
 Track: 2, feeds 4.
 Papers: to fill in the lit pass.
-Status: replicated for trajectory (archived run plus canonical rerun);
-the three-representation pattern spans OB-04 plus this entry.
+Status: replicated across trajectory and noplan. The pattern now spans
+four configurations: G at zero thoughts on prose, trajectory (twice),
+and noplan, and at 15/15 only under its tagged tree. GPT explains when
+the instrument demands it and not otherwise.
+
+
+## OB-21 both executors authored tests with no prompting at all
+What happened: the noplan cells contain zero test wording anywhere (the
+prompt is the base contract plus the issue, 1490 chars, nothing else),
+and both executors authored a regression test anyway (C test edit t10,
+G test edit t11). This complicates OB-03's story. In the earlier four
+cells, test authoring tracked plan test-wording, and the one plan with
+no test wording (Claude prose) produced the only run without tests. The
+noplan result shows absence of test wording is not the suppressor:
+with no plan at all, Claude tests by default. Put together, the sharper
+reading is that a plan's presence constrains behavior, and an
+incomplete plan can suppress engineering practice the model would
+otherwise do unprompted. Cross-generation caveat: the prose cells were
+earlier samples on the earlier harness, so this is a contrast across
+runs, not a controlled pair.
+Cells: C-noplan, G-noplan (phase1v2); contrast cells C-unstr, G-unstr.
+Anchor: phase1v2 01_NOPLAN artifacts, C t10 and G t11 edit turns; the
+noplan prompt body (no PLAN header by construction); OB-03 anchors for
+the contrast side.
+Track: 1, with a foot in 2.
+Papers: to fill in the lit pass.
+Status: single run per noplan cell; the contrast leg is OB-03's cells.
+
+## OB-22 the idiomatic test placement is the one that collides with the
+held-out patch
+What happened: the two models place their regression tests differently,
+and the more idiomatic choice is the risky one. GPT appends a
+standalone test function near the end of the test file in every run
+(113, 138, 113 across its cells here). Claude under noplan integrated
+its test INTO the existing parametrized compound_models dict at the
+conventional location (line 52 region), which is exactly the region
+the held-out test patch rewrites; under trajectory Claude appended
+standalone at 135 instead, so plan presence also moved its placement.
+Application rehearsal on a real checkout at base_commit, model_patch
+first then held-out test_patch, per the Docker order: traj C run 2,
+traj G run 2, and noplan G all apply cleanly end to end; noplan C
+fails strict git apply on the test patch (hunk 2 at line 52) and
+succeeds only through the patch fuzz fallback (fuzz 3, offset 7),
+after which the duplicate cm8 dict key resolves in the held-out
+version's favor by literal-order semantics. Docker predictions logged:
+traj C, traj G, noplan G predicted to resolve; noplan C predicted to
+resolve contingent on the evaluator's fuzz fallback, and would fail
+under a strict-git-apply-only evaluator.
+Cells: all four phase1v2 canonical exec cells.
+Anchor: phase1v2 artifacts, test-edit hunk headers; application
+rehearsal transcript (clone at d16bfe05, apply order, rc values).
+Track: 1, feeds the Docker methodology notes.
+Papers: to fill in the lit pass.
+Status: single rehearsal per cell; nothing is confirmed until Docker
+runs.
