@@ -1,0 +1,5 @@
+reset_backup_astropy__astropy-12907_20260811T005857Z.patch
+--CLAUDE TRAJECTORY
+
+reset_backup_astropy__astropy-12907_20260811T010040Z.patch
+--GPT TRAJECTORY

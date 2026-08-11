@@ -1,0 +1,99 @@
+SILENT OBSERVATION TRUNCATION DEFECT NOTE (Aug 10)
+
+WHAT THE BUG IS
+The tools cap every observation at MAX_OBS_CHARS (3000) and append a
+marker line telling the model the content was cut ("[truncated at 3000
+chars; narrow the request]"). The marker was appended AFTER the cap, so
+the tool output was about 3046 chars. make_record then sliced the
+observation back to 3000, which removed exactly the marker. The model is
+fed the observation from the record, so the model received hard-cut file
+contents with no signal that anything was missing. The docstring
+contract ("truncation happens at the tool, marked in the text") was
+violated in effect whenever truncation fired.
+
+Code path: _truncate in exec_harness.py (marker appended beyond the
+cap) combined with the observation slice in make_record.
+
+HOW IT WAS FOUND
+Full LangChain/LangGraph correctness audit of exec_harness.py before the
+no-plan cells (Aug 10 session). First detection attempt grepped for the
+marker string and reported zero truncations; that method was wrong
+because the marker is exactly what the slice removes. A length check
+(observations of exactly 3000 chars) found the real firings.
+
+OBSERVED IMPACT IN THE ARCHIVED TRAJECTORY RUNS
+Claude cell: 4 of 14 observations truncated (t00, t01, t02, t08), all
+full-file opens of separable.py or the test file.
+GPT cell: 6 of 12 observations truncated (t01, t02, t03, t04, t06, t07),
+same pattern.
+Both models detected the cuts anyway (open_file's header states "lines
+X-Y of N" and the body stops early), narrowed their subsequent reads,
+landed the gold one-line source fix at the gold hunk, and added a
+regression test. Outcomes were unaffected; efficiency (turns and tokens)
+may have been inflated. Claude's three identical full-file opens at
+t00-t02 plausibly interact with the missing marker; no causal claim from
+one run.
+
+WHY OLD EXPERIMENTS ARE NOT RE-RUN (defensible summary)
+1. The records store exactly what the model saw, byte for byte, so no
+   artifact misrepresents its run. The defect could waste effort; it
+   could not falsify a measurement.
+2. The defect is symmetric: same code, both models, every configuration,
+   the entire campaign. An identical defect on both sides of a
+   comparison cannot bias the comparison.
+3. Plan-stage results are untouched by construction: planning runs never
+   called a tool, so no plan artifact contains any observation at all.
+4. The retained findings from affected exec runs (label lag, the
+   frozen-prompt break, reconciliation behavior, the accountability
+   cliff) concern what the model wrote and tagged, not what it read,
+   and every affected run still reached the correct fix.
+
+RULING (Aug 10)
+Fix the defect in the phase1v2 harness now. Re-run the two trajectory
+cells under the fixed harness. Tag the pre-fix trajectory runs as
+archived. Result: all six phase1v2 cells (noplan, trajectory, structured
+no-tag, both executors) run on one identical fixed harness, so the final
+evaluation set is uniform. Older tagged-instrument runs (ladder v1-v6)
+are kept as-is with this defect disclosed; their findings are about
+attribution behavior, and re-running them would not change any claim
+made from them. Disclose in the paper's threats-to-validity discussion.
+
+THE FIX
+_truncate now reserves space for the marker inside the cap:
+truncated output = text[:3000 - len(marker)] + marker, total exactly
+3000 chars. The make_record slice becomes a no-op safeguard and the
+marker survives into both the record and what the model sees.
+Verified: unit checks (marker survives make_record; exactly-3000 inputs
+pass untouched), all three frozen prompt hashes reproduce unchanged
+through the CLI dry-run path, stub run passes, and the diff against the
+prior phase1v2 harness is the one function.
+
+Harness hashes:
+  pre-fix phase1v2 (archived trajectory runs used this):
+    8e06165eee7f415207314dfc6081cc7109ee126614aa6b7acc7a9b7af4a0a18c
+  fixed phase1v2 (all reruns and remaining cells use this):
+    90aeb8192d9bad4ce164d7326f51a2455a83a407d2f26649d72afdbeb48697bf
+
+RERUN PROTOCOL (trajectory)
+1. Move the pre-fix outputs folder aside with the ARCHIVED_ prefix and
+   drop this note inside it. Replace the working exec_harness.py with
+   the fixed file and verify its sha256 against the value above.
+2. Dry-run both trajectory cells; prompts are untouched by the fix, so
+   the hashes must equal the banked values:
+     Claude cell e0a21b816ead2d896f6185bfe2532e54a8a36a861f4906eb42b329aad68625f9 (26371 chars)
+     GPT cell    ed1da3b584b15432f9537aa1081e79d9575ec5c9124e4390b790f3aab2eb3b23 (7226 chars)
+3. Reset the checkout, run the Claude cell live with --run 2, reset,
+   run the GPT cell live with --run 2. Run number 2 keeps the rerun
+   distinguishable from the archived run 1 in the filename itself.
+   School account flag on both.
+4. The rerun artifacts become the canonical trajectory cells.
+
+NOTEBOOK IMPLICATIONS
+OB-19 and OB-20 are anchored to the archived (pre-fix) trajectory runs.
+After the rerun: keep both entries, re-check whether each finding
+replicates under the fixed harness, update Cells/Anchor to the run 2
+artifacts, and set Status accordingly (replicated, or changed, with the
+archived run cited as the first sighting). The plan-stage facts inside
+OB-19 (Claude's trajectory plan has zero edit steps; the fix lives in
+the plan's done summary) are planning artifacts and are unaffected by
+this defect regardless of rerun outcome.

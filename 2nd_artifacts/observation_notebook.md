@@ -271,3 +271,100 @@ policy_action_echo fields; the untagged G turns t3, t4, t5, t8, t13.
 Track: 2, feeds 4.
 Papers: to fill in the lit pass.
 Status: single run per cell for v4; the prefix side is three runs.
+Count correction (Aug 10): the v2 G cell is 16/16, not 15/15 as earlier
+notes said; rate unchanged at 100%.
+
+## OB-16 explaining the tags' purpose did not move the label
+What happened: v6 kept the v5 tail byte for byte and added one paragraph
+explaining why the tags exist (audit, traceability, an action with a
+missing or wrong id cannot be traced), a 285-byte delta, single variable,
+run at Dr. Nasim's direction outside the pre-stated five-rung ladder.
+Prediction recorded at freeze: the purpose framing would not fix the
+edit-turn mislabel. It held. Claude's source edit ran tagged P2.2 with
+"Found the bug. On line 245", the seventh consecutive sample with the
+source edit under a deliberation node (P3.1, P2.2, P2.2, P3, P2.2, P2.1,
+P2.2). P4 appears in no record this run and shows up prose-only in the
+done accounting. Test edit carried P5 correctly, reconciliation intact,
+deeds 2/3. Knowing what the tags are for changed nothing about where the
+label lands, which is what OB-12 predicted: the lag is behavioral, not
+informational.
+Cells: C-struct v6 (run 2, canonical; run 1 archived non-canonical,
+harness recording defect).
+Anchor: 06_exec_harness_run_2 C artifact, source-edit thought "Found the
+bug. On line 245" (1 hit); '"policy_id": "P4"' 0 hits in the C artifact.
+Track: 2, feeds 4.
+Papers: to fill in the lit pass.
+Status: single run for v6; the deliberation-node placement is seven
+samples on this instance.
+
+## OB-17 GPT's clean record broke on a frozen prompt
+What happened: under v6 GPT recorded 13/13, but its source edit went out
+tagged P3 (derive, a definitive policy) with P6 (modify) arriving on the
+next verification read: the lag signature, in GPT, for the first time
+(1 of 7 GPT samples; Claude 7 of 7). The prompt was dry-run frozen before
+the call. One sample ended the "zero level violations for GPT" claim,
+retired everywhere it appears. Working headline: self-reported
+attribution is unstable within one model even on a byte-frozen prompt,
+so per-model claims built on a handful of samples do not hold.
+Cells: G-struct v6 (run 2, canonical).
+Anchor: 06_exec_harness_run_2 G artifact, rec 8 thought "replaces a
+right nested child matrix with ones".
+Track: 2, feeds 4.
+Papers: to fill in the lit pass.
+Status: single run; the breaking sample against six prior clean ones.
+
+## OB-18 first GPT reconciliation miss, and it is self-inconsistent
+What happened: GPT's done turn under v6 was tagged P7 while the same
+thought declares P7 impossible, and P8 was neither cited during the run
+nor accounted at done. First GPT reconciliation miss after full
+reconciliations in v3, v4, v5. The two layers OB-13 called independent
+(turn labels, done accounting) failed in the same run, plus a third
+shape: a tag that contradicts its own thought in the same breath.
+Cells: G-struct v6 (run 2, canonical).
+Anchor: 06_exec_harness_run_2 G artifact, done thought "Policy
+accounting before completion" contains no P8; done record policy_id P7.
+Track: 2, feeds 4.
+Papers: to fill in the lit pass.
+Status: single run.
+
+## OB-19 the trajectory step list was not binding for either executor
+What happened: first live trajectory cells (no-tag by construction).
+Claude's trajectory plan contains zero edit steps (17 open, 16 search,
+1 done); the fix exists only as prose in the plan's 3081-char done
+summary. Executor Claude opened with "I'll follow the plan", then edited
+source at t06 and tests at t10 with no stated deviation, despite the
+standing "deviate only with stated reason" clause. The actionable
+content lived in the plan's prose and the executor did the prose, not
+the steps. GPT executed its plan's work but swapped the order, source
+edit before test edit against its plan's steps 5 and 6, also unstated.
+Both landed the gold one-line fix at the gold hunk and added a
+nested-compound regression test; Docker pending, predictions logged
+(both predicted to resolve). Test hunks: C at 135 again, consistent
+with every prior C run; G at a fourth distinct location (138, after
+148, 56, 113); neither overlaps the held-out test hunks at 28 and
+52-59.
+Cells: C-traj exec, G-traj exec (phase1v2, run 1 each).
+Anchor: phase1v2 00_TRAJECTORY outputs, C artifact t00 thought "I'll
+follow the plan", t06 edit thought "Found it. On line 245"; G artifact
+t09/t10 edit order against plan parsed_steps 5 and 6.
+Track: 2, with a foot in 1 and 4.
+Papers: to fill in the lit pass.
+Status: single run per cell.
+
+## OB-20 GPT went silent again once nothing asked it to talk
+What happened: in the trajectory cells GPT's stored thoughts are empty
+on all 12 turns; Claude wrote substantive thoughts on 9 of 14. This
+extends OB-04 to a third representation: GPT at 0 of 13 on prose, 15 of
+15 on its tagged tree, now 0 of 12 on trajectory. GPT explains itself
+when the instrument demands it and not otherwise; Claude explains
+regardless. Consequence for the reconstructed side: for a GPT no-tag
+run the chain-of-thought component of the reconstruction material is
+absent entirely, so prose reconstruction works from actions and
+observations only. The baseline description in the paper should say so.
+Cells: G-traj exec, C-traj exec (phase1v2).
+Anchor: phase1v2 00_TRAJECTORY outputs, per-record action.thought
+fields (G empty 12/12, C empty 5/14).
+Track: 2, feeds 4.
+Papers: to fill in the lit pass.
+Status: single run for trajectory; the three-representation pattern
+spans OB-04 plus this entry.

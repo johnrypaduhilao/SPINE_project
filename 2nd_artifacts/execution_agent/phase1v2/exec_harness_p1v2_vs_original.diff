@@ -1,0 +1,327 @@
+--- exec_harness_orig.py	2026-08-10 21:27:28.412033560 +0000
++++ exec_harness_p1v2.py	2026-08-11 00:43:16.945600800 +0000
+@@ -10,18 +10,19 @@
+ Configs (--config):
+   noplan             no plan given                (banked run exists already)
+   unstructured_plan  prose plan in the prompt
+-  trajectory_plan    trajectory-step plan in the prompt   (conditional)
++  trajectory_plan    trajectory-step plan in the prompt
+   structured_plan    policy tree in the prompt
+ 
+ Every step emits one record with the same fields in every config:
+   step_id, action, observation, timestamp, policy_id, provenance_mode
+ 
+-policy_id is filled at emit time only in structured_plan, where the prompt
+-asks the agent to name the policy id it is executing on each tool call.
+-Elsewhere the field stays null and provenance_mode is "reconstructed":
+-attribution is done afterwards by reading the log against the plan, which
+-is the O(n) side of the comparison. Same schema throughout; only whether
+-the field can be filled differs.
++phase1v2 working copy: no-tag only. IDs are never asked from the model
++in any config; policy_id stays null in every record and provenance_mode
++is "reconstructed" throughout: attribution is done afterwards by reading
++the log against the plan, which is the O(n) side of the comparison. The
++versioned instrument tails (v1-v6) live in the archived phase1 harness
++copies and stay frozen as reference instruments; dispatch cells with
++system-stamped ids are a separate harness, not this file.
+ 
+ Gate is off for run 1. Delivery actions (git commit, push, PR) are not
+ blocked - the sandbox has no network - but the harness records what a gate
+@@ -46,7 +47,6 @@
+ import argparse
+ import hashlib
+ import json
+-import re
+ import os
+ import shutil
+ import sys
+@@ -145,7 +145,7 @@
+     sys.exit("unknown config %s" % config)
+ 
+ 
+-def build_prompt(config, plan, intent, tail="v1"):
++def build_prompt(config, plan, intent):
+     base = (
+         "You are a software engineering agent working in a repository. "
+         "Use the tools to inspect and modify the code; paths are relative "
+@@ -155,87 +155,11 @@
+     if config == "noplan":
+         return base
+     plan_text = json.dumps(plan, indent=2) if isinstance(plan, (dict, list)) else plan
+-    extra = ""
+-    if config == "structured_plan":
+-        if tail == "v6":
+-            extra = (
+-                "\nThese tags exist for audit and traceability. Every "
+-                "record of this run is stored together with the policy id "
+-                "you cite, and an auditor later uses those ids to trace "
+-                "each action back through the plan to the original intent. "
+-                "An action recorded with a missing or wrong id cannot be "
+-                "traced."
+-                "\nOn every tool call, include two tags in your reasoning:"
+-                "\n- <policy_id>ID</policy_id> where ID is the \"id\" field "
+-                "of the one policy in the plan above whose action this "
+-                "tool call performs."
+-                "\n- <policy_action>ACTION</policy_action> where ACTION is "
+-                "that policy's \"action\" field, copied exactly."
+-                "\nAlways cite the most specific applicable policy, the "
+-                "deepest matching policy rather than its parent."
+-                "\nIf a policy cannot be performed with the available "
+-                "tools, state this explicitly in your reasoning and cite "
+-                "that policy's id in the same <policy_id> form."
+-                "\nBefore calling done, you must account for every policy "
+-                "you have not cited. For each such policy, state its id "
+-                "and whether it was: completed, subsumed by a cited "
+-                "policy, or impossible with the available tools.")
+-            return (base + "\n\nPLAN (follow it; deviate only with stated "
+-                    "reason):\n" + plan_text + extra)
+-        if tail == "v5":
+-            extra = (
+-                "\nOn every tool call, include two tags in your reasoning:"
+-                "\n- <policy_id>ID</policy_id> where ID is the \"id\" field "
+-                "of the one policy in the plan above whose action this "
+-                "tool call performs."
+-                "\n- <policy_action>ACTION</policy_action> where ACTION is "
+-                "that policy's \"action\" field, copied exactly."
+-                "\nAlways cite the most specific applicable policy, the "
+-                "deepest matching policy rather than its parent."
+-                "\nIf a policy cannot be performed with the available "
+-                "tools, state this explicitly in your reasoning and cite "
+-                "that policy's id in the same <policy_id> form."
+-                "\nBefore calling done, you must account for every policy "
+-                "you have not cited. For each such policy, state its id "
+-                "and whether it was: completed, subsumed by a cited "
+-                "policy, or impossible with the available tools.")
+-            return (base + "\n\nPLAN (follow it; deviate only with stated "
+-                    "reason):\n" + plan_text + extra)
+-        if tail == "v4":
+-            extra = (
+-                "\nOn EVERY tool call, include two tags in your reasoning: "
+-                "<policy_id>ID</policy_id> where ID is the \"id\" field of "
+-                "the one policy in the plan above whose action this tool "
+-                "call performs, and <policy_action>ACTION</policy_action> "
+-                "where ACTION is that policy's \"action\" field copied "
+-                "exactly. If a policy cannot be performed with the "
+-                "available tools, state this in your reasoning, citing its "
+-                "id the same way. Before calling done, account for every "
+-                "policy you have not cited: for each, state its \"id\" and "
+-                "whether it was completed, subsumed by a cited policy, or "
+-                "impossible with the available tools.")
+-            return (base + "\n\nPLAN (follow it; deviate only with stated "
+-                    "reason):\n" + plan_text + extra)
+-        extra = ("\nOn EVERY tool call, state which policy id you are "
+-                 "executing by prefixing your reasoning with [P<id>].")
+-        if tail in ("v2", "v3"):
+-            extra += (
+-                " The <id> is the \"id\" field of exactly one policy in the "
+-                "plan above, never its \"parent_id\". Cite the most specific "
+-                "policy whose action the tool call performs, the deepest "
+-                "matching policy rather than an ancestor. If a policy cannot "
+-                "be performed with the available tools, state this "
+-                "explicitly in your reasoning, citing that policy's \"id\" "
+-                "in the same [P<id>] form.")
+-        if tail == "v3":
+-            extra += (
+-                " The cited id must name the policy whose action the tool "
+-                "call itself performs, even if your reasoning at that "
+-                "moment serves a different policy. Before calling done, "
+-                "account for every policy you have not cited: for each, "
+-                "state its \"id\" and whether it was completed, subsumed by "
+-                "a cited policy, or impossible with the available tools.")
+-    return base + "\n\nPLAN (follow it; deviate only with stated reason):\n" + plan_text + extra
++    # every planned config gets the plan and nothing else: the
++    # representation handed over is the only variable across cells. No id
++    # request of any kind; IDs are never asked from the model.
++    return (base + "\n\nPLAN (follow it; deviate only with stated "
++            "reason):\n" + plan_text)
+ 
+ 
+ # --- record schema, identical in every config ------------------------------
+@@ -249,9 +173,8 @@
+         "action": action,
+         "observation": (observation or "")[:MAX_OBS_CHARS],
+         "timestamp": datetime.now(timezone.utc).isoformat(),
+-        "policy_id": policy_id,          # only set in structured_plan
+-        "provenance_mode": ("recorded" if config == "structured_plan"
+-                            else "reconstructed"),
++        "policy_id": policy_id,          # never set; IDs are not asked
++        "provenance_mode": "reconstructed",
+         "gate_flag": gate_flag,
+     }
+     if usage:
+@@ -443,7 +366,6 @@
+ 
+ class AgentState(TypedDict):
+     config: str
+-    tail: str                 # structured-tail version; "v1" unless set
+     intent: str
+     plan: Any                 # None | prose str | trajectory steps | tree
+     plan_desc: str
+@@ -468,7 +390,7 @@
+ 
+     def inject_plan(state: AgentState):
+         # the prompt arrives fully built in the initial state; attribution
+-        # of [P<id>] against real tree nodes is the scorer's job
++        # against the plan is reconstruction after the run, never here
+         return {"turn": 0, "records": [], "outcome": "running",
+                 "pending": None}
+ 
+@@ -488,33 +410,15 @@
+         p = state["pending"]
+         if p is None:
+             return {}
+-        pid = None
+-        echo = None
+-        tail = state.get("tail", "v1")
+-        if state["config"] == "structured_plan":
+-            if tail in ("v4", "v5", "v6"):
+-                m = re.search(r"<policy_id>\s*(P[^<\s]*)\s*</policy_id>",
+-                              p["thought"] or "")
+-                if m:
+-                    pid = m.group(1)
+-                a = re.search(
+-                    r"<policy_action>\s*([^<]*?)\s*</policy_action>",
+-                    p["thought"] or "")
+-                if a:
+-                    echo = a.group(1)
+-            else:
+-                m = re.match(r"\s*\[(P[^\]\s]*)\]", p["thought"] or "")
+-                if m:
+-                    pid = m.group(1)
++        # no-tag harness: nothing is parsed and policy_id stays null in
++        # every config, even if a thought happens to contain an id shape.
+         rec = make_record(state["turn"],
+                           {"name": p["name"], "args": p["args"],
+                            "thought": p["thought"]},
+-                          p["observation"], pid, state["config"],
++                          p["observation"], None, state["config"],
+                           usage=p.get("usage"), wall_s=p.get("wall_s"),
+                           parallel_calls_dropped=p.get(
+                               "parallel_calls_dropped", 0))
+-        if state["config"] == "structured_plan" and tail in ("v4", "v5", "v6"):
+-            rec["policy_action_echo"] = echo
+         done = p["name"] == "done"
+         return {"records": state["records"] + [rec],
+                 "turn": state["turn"] + 1,
+@@ -554,13 +458,10 @@
+ 
+ def run_stub(config, tools):
+     script = [
+-        ("[P2.1] run the reproduction first" if config == "structured_plan"
+-         else "find the function", "search_repo", {"term": "separability_matrix"}),
+-        ("[P5] apply the fix" if config == "structured_plan"
+-         else "apply the fix", "edit_file",
++        ("find the function", "search_repo", {"term": "separability_matrix"}),
++        ("apply the fix", "edit_file",
+          {"path": "astropy/modeling/separable.py", "old": "x", "new": "y"}),
+-        ("[P7.1] commit the change" if config == "structured_plan"
+-         else "commit the change", "edit_file",
++        ("commit the change", "edit_file",
+          {"path": "commit", "old": "", "new": ""}),   # trips gate_flag
+         ("done", "done", {"summary": "stub run"}),
+     ]
+@@ -578,7 +479,6 @@
+     from langgraph.graph.state import CompiledStateGraph
+     assert isinstance(graph, CompiledStateGraph), type(graph)
+     final = graph.invoke({"config": config,
+-                          "tail": "v1",
+                           "intent": "stub intent",
+                           "plan": ("stub plan" if config != "noplan" else None),
+                           "plan_desc": "stub", "prompt": "stub prompt"},
+@@ -618,7 +518,7 @@
+                     if isinstance(b, dict)).strip()
+ 
+ 
+-def run_live(config, prompt, provider, model, tools, tail="v1"):
++def run_live(config, prompt, provider, model, tools):
+     """One live exec run. The agent seam feeds each observation back as a
+     ToolMessage before the next turn; every turn streams, meters its own
+     usage, and lands in one record. Temperature rejection is retried once
+@@ -696,7 +596,7 @@
+ 
+     graph = build_graph(tools, agent_fn)
+     t0 = time.perf_counter()
+-    final = graph.invoke({"config": config, "tail": tail,
++    final = graph.invoke({"config": config,
+                           "intent": "", "plan": None,
+                           "plan_desc": "", "prompt": prompt},
+                          config={"recursion_limit": 2 * MAX_TURNS + 10})
+@@ -717,7 +617,7 @@
+     print("gate_flags       : %d (recorded, never blocked)"
+           % sum(1 for r in records if r["gate_flag"]))
+     attributed = sum(1 for r in records if r["policy_id"])
+-    print("policy_id set    : %d/%d (attribution at emit time)"
++    print("policy_id set    : %d/%d (always 0 here; no-tag harness)"
+           % (attributed, len(records)))
+     print("provenance_mode  : %s" % records[0]["provenance_mode"])
+ 
+@@ -778,9 +678,6 @@
+     ap.add_argument("--instance-json")
+     ap.add_argument("--plan-file", help="the plan artifact for this config")
+     ap.add_argument("--run", type=int, default=1)
+-    ap.add_argument("--tail", choices=["v1", "v2", "v3", "v4", "v5", "v6"], default="v1",
+-                    help="structured-tail version; v1 reproduces the "
+-                         "banked instrument byte-for-byte")
+     ap.add_argument("--account", default=None,
+                     help="API account label recorded in the artifact")
+     ap.add_argument("--stub", action="store_true")
+@@ -797,9 +694,6 @@
+         return
+     if not args.config:
+         sys.exit("--config is required (or use --tool-check)")
+-    if args.tail != "v1" and args.config != "structured_plan":
+-        sys.exit("--tail v2 only applies to structured_plan; the other "
+-                 "configs carry no tail and must not be labeled with one")
+ 
+     tools = make_stub_tools() if args.stub else make_real_tools(args.repo_dir)
+ 
+@@ -829,12 +723,10 @@
+                      % (plan_meta["plan_instance_id"],
+                         instance["instance_id"]))
+         prompt = build_prompt(args.config, plan,
+-                              instance["problem_statement"], args.tail)
++                              instance["problem_statement"])
+         model = args.model or DEFAULT_MODEL[args.provider]
+         prompt_sha = hashlib.sha256(prompt.encode("utf-8")).hexdigest()
+         print("config          : %s" % args.config)
+-        if args.config == "structured_plan":
+-            print("instrument tail : %s" % args.tail)
+         print("instance        : %s" % instance["instance_id"])
+         print("plan            : %s" % plan_desc)
+         print("planner         : %s / %s" % (plan_meta["planner_provider"],
+@@ -849,8 +741,7 @@
+             print("-" * 72)
+             return
+         records, outcome, extra = run_live(args.config, prompt,
+-                                           args.provider, model, tools,
+-                                           tail=args.tail)
++                                           args.provider, model, tools)
+ 
+     if args.stub:
+         patch = None
+@@ -874,14 +765,11 @@
+             if isinstance(v, int):
+                 usage_total[k] = usage_total.get(k, 0) + v
+     os.makedirs(OUT_DIR, exist_ok=True)
+-    tail_tag = ("_tail-%s" % args.tail
+-                if (args.config == "structured_plan" and args.tail != "v1")
+-                else "")
+     out = os.path.join(OUT_DIR,
+-                       "exec_%s_%s_planner-%s_executor-%s%s_run%d.json"
++                       "exec_%s_%s_planner-%s_executor-%s_run%d.json"
+                        % (args.config, instance["instance_id"],
+                           plan_meta["planner_model"] or "none",
+-                          model, tail_tag, args.run))
++                          model, args.run))
+     if os.path.exists(out):
+         sys.exit("refusing to overwrite existing artifact %s; bump --run "
+                  "or move the file first" % out)
+@@ -901,7 +789,7 @@
+         "max_tokens": MAX_TOKENS,
+         "max_turns": MAX_TURNS,
+         "run": args.run,
+-        "instrument_tail": (args.tail if args.config == "structured_plan"
++        "instrument_tail": ("none" if args.config == "structured_plan"
+                             else None),
+         "api_account": args.account,
+         "outcome": outcome,
