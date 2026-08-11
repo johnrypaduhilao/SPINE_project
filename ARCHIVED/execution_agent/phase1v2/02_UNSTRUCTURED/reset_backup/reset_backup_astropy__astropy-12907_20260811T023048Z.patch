@@ -1,0 +1,46 @@
+diff --git a/astropy/modeling/separable.py b/astropy/modeling/separable.py
+index a308e2729..45bea3608 100644
+--- a/astropy/modeling/separable.py
++++ b/astropy/modeling/separable.py
+@@ -242,7 +242,7 @@ def _cstack(left, right):
+         cright = _coord_matrix(right, 'right', noutp)
+     else:
+         cright = np.zeros((noutp, right.shape[1]))
+-        cright[-right.shape[0]:, -right.shape[1]:] = 1
++        cright[-right.shape[0]:, -right.shape[1]:] = right
+ 
+     return np.hstack([cleft, cright])
+ 
+diff --git a/astropy/modeling/tests/test_separable.py b/astropy/modeling/tests/test_separable.py
+index 8dfe5c862..c7a158e93 100644
+--- a/astropy/modeling/tests/test_separable.py
++++ b/astropy/modeling/tests/test_separable.py
+@@ -112,6 +112,28 @@ def test_cstack():
+                               [0, 0, 1]])
+                     )
+ 
++    # Preserve the structure of a nested compound model matrix.
++    result = _cstack(rot, np.array([[1, 0], [0, 1]]))
++    assert_allclose(result,
++                    np.array([[1, 1, 0, 0],
++                              [1, 1, 0, 0],
++                              [0, 0, 1, 0],
++                              [0, 0, 0, 1]]))
++
++
++def test_nested_compound_separability():
++    nested = models.Linear1D(10) & models.Linear1D(5)
++    compound = models.Pix2Sky_TAN() & nested
++    assert_allclose(separability_matrix(compound),
++                    np.array([[True, True, False, False],
++                              [True, True, False, False],
++                              [False, False, True, False],
++                              [False, False, False, True]]))
++
++    deeply_nested = (models.Linear1D(1) &
++                     (models.Linear1D(2) & models.Linear1D(3)))
++    assert_allclose(separability_matrix(deeply_nested), np.identity(3))
++
+ 
+ def test_arith_oper():
+     # Models as inputs

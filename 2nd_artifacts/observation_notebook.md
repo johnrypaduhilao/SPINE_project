@@ -66,7 +66,12 @@ Anchor: notes_exec_vs_plan_findings.md; exec artifacts, plan sections vs
 authored files.
 Track: 1, with a foot in 2.
 Papers: to fill in the lit pass.
-Status: single run. Complicated by the noplan cells: see OB-21.
+Status: replicated. All four planned phase1v2 cells on the fixed
+harness track plan content: C-unstr (zero test wording, computed on the
+canonical artifact) authored no tests; G-unstr (explicit two-test step)
+authored both requested tests; both trajectory plans carry test wording
+and both runs authored tests. The noplan cells sharpen rather than
+contradict this: see OB-21.
 
 ## OB-04 same model, silent on prose, articulate on its tree
 What happened: GPT wrote zero rationale turns under its prose plan (0 of
@@ -369,7 +374,8 @@ archived, first sighting); G-noplan, C-noplan (phase1v2).
 Anchor: phase1v2 00_TRAJECTORY outputs run 2 artifacts, per-record
 action.thought fields (G empty 12/12 in both runs; C substantive on
 9/14 in run 1 and 8/13 in run 2); phase1v2 01_NOPLAN artifacts
-(G empty 13/13, C substantive 7/12).
+(G empty 13/13, C substantive 7/12); phase1v2 02_UNSTRUCTURED
+artifacts (G empty 14/14, C substantive 4/6).
 Track: 2, feeds 4.
 Papers: to fill in the lit pass.
 Status: replicated across trajectory and noplan. The pattern now spans
@@ -392,13 +398,19 @@ incomplete plan can suppress engineering practice the model would
 otherwise do unprompted. Cross-generation caveat: the prose cells were
 earlier samples on the earlier harness, so this is a contrast across
 runs, not a controlled pair.
-Cells: C-noplan, G-noplan (phase1v2); contrast cells C-unstr, G-unstr.
-Anchor: phase1v2 01_NOPLAN artifacts, C t10 and G t11 edit turns; the
-noplan prompt body (no PLAN header by construction); OB-03 anchors for
-the contrast side.
+Cells: C-noplan, G-noplan (phase1v2); contrast cells C-unstr, G-unstr
+(phase1v2).
+Anchor: phase1v2 01_NOPLAN artifacts, C t10 and G t11 edit turns;
+phase1v2 02_UNSTRUCTURED C artifact, 6 turns, no test-file touch in
+the model_patch; the noplan prompt body (no PLAN header by
+construction).
 Track: 1, with a foot in 2.
 Papers: to fill in the lit pass.
-Status: single run per noplan cell; the contrast leg is OB-03's cells.
+Status: replicated as a controlled pair. C-noplan and C-unstr ran in
+the same session on the identical fixed harness, same instance, same
+base contract: with no plan Claude authored a test unprompted; with a
+test-free prose plan Claude authored none. The suppression reading no
+longer rests on a cross-generation contrast.
 
 ## OB-22 the idiomatic test placement is the one that collides with the
 held-out patch
@@ -412,18 +424,47 @@ the held-out test patch rewrites; under trajectory Claude appended
 standalone at 135 instead, so plan presence also moved its placement.
 Application rehearsal on a real checkout at base_commit, model_patch
 first then held-out test_patch, per the Docker order: traj C run 2,
-traj G run 2, and noplan G all apply cleanly end to end; noplan C
-fails strict git apply on the test patch (hunk 2 at line 52) and
-succeeds only through the patch fuzz fallback (fuzz 3, offset 7),
-after which the duplicate cm8 dict key resolves in the held-out
-version's favor by literal-order semantics. Docker predictions logged:
-traj C, traj G, noplan G predicted to resolve; noplan C predicted to
-resolve contingent on the evaluator's fuzz fallback, and would fail
-under a strict-git-apply-only evaluator.
-Cells: all four phase1v2 canonical exec cells.
+traj G run 2, noplan G, unstr C, and unstr G all apply cleanly end to
+end; noplan C fails strict git apply on the test patch (hunk 2 at
+line 52) and succeeds only through the patch fuzz fallback (fuzz 3,
+offset 7), after which the duplicate cm8 dict key resolves in the
+held-out version's favor by literal-order semantics. Docker
+predictions logged: traj C, traj G, noplan G, unstr C, and unstr G
+predicted to resolve; noplan C predicted to resolve contingent on the
+evaluator's fuzz fallback, and would fail under a strict-git-apply-only
+evaluator.
+Cells: all six phase1v2 canonical exec cells.
 Anchor: phase1v2 artifacts, test-edit hunk headers; application
 rehearsal transcript (clone at d16bfe05, apply order, rc values).
 Track: 1, feeds the Docker methodology notes.
 Papers: to fill in the lit pass.
 Status: single rehearsal per cell; nothing is confirmed until Docker
 runs.
+
+
+## OB-23 execution cost tracks prescribed scope, and the orderings
+invert between models
+What happened: with six canonical cells on one harness, the
+cheapest-to-dearest ordering of plan representations is not
+model-stable. Claude: unstructured 27,979 tokens (6 turns), noplan
+69,143 (12), trajectory 178,225 (13). GPT: noplan 73,342 (13),
+trajectory 77,769 (12), unstructured 88,071 (14). The same prose
+representation is Claude's cheapest cell and GPT's dearest, and the
+reasons are visible in the runs: Claude's prose plan named the bug
+location and prescribed no tests, so Claude went nearly straight to
+the fix; GPT's prose plan prescribed a two-test regression program
+plus suite verification, and GPT executed all of it. Trajectory's cost
+for Claude is dominated by its own 26k-char plan re-fed every turn.
+So token cost confounds three things: the plan's size in context, the
+scope of work the plan prescribes, and executor behavior. Any overhead
+claim about a representation must hold the prescribed scope fixed or
+say it did not. This complicates OB-10's structure-costs-tokens
+reading rather than replacing it.
+Cells: all six phase1v2 canonical exec cells.
+Anchor: phase1v2 artifacts, usage_total fields and record counts per
+cell; plan artifacts for the scope contrast (test wording computed:
+C-unstr 0, G-unstr 7).
+Track: 5, feeds 3 and 1.
+Papers: to fill in the lit pass.
+Status: single run per cell; the inversion is one instance, one run
+each.
