@@ -278,7 +278,7 @@ notes said; rate unchanged at 100%.
 What happened: v6 kept the v5 tail byte for byte and added one paragraph
 explaining why the tags exist (audit, traceability, an action with a
 missing or wrong id cannot be traced), a 285-byte delta, single variable,
-run at Dr. Nasim's direction outside the pre-stated five-rung ladder.
+run at advisor direction outside the pre-stated five-rung ladder.
 Prediction recorded at freeze: the purpose framing would not fix the
 edit-turn mislabel. It held. Claude's source edit ran tagged P2.2 with
 "Found the bug. On line 245", the seventh consecutive sample with the

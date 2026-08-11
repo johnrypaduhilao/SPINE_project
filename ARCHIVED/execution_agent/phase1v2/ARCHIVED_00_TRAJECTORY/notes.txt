@@ -48,7 +48,7 @@ WHY OLD EXPERIMENTS ARE NOT RE-RUN (defensible summary)
    cliff) concern what the model wrote and tagged, not what it read,
    and every affected run still reached the correct fix.
 
-RULING (Aug 10)
+DECISION (Aug 10)
 Fix the defect in the phase1v2 harness now. Re-run the two trajectory
 cells under the fixed harness. Tag the pre-fix trajectory runs as
 archived. Result: all six phase1v2 cells (noplan, trajectory, structured
@@ -72,7 +72,16 @@ Harness hashes:
   pre-fix phase1v2 (archived trajectory runs used this):
     8e06165eee7f415207314dfc6081cc7109ee126614aa6b7acc7a9b7af4a0a18c
   fixed phase1v2 (all reruns and remaining cells use this):
-    90aeb8192d9bad4ce164d7326f51a2455a83a407d2f26649d72afdbeb48697bf
+    2186ec9b41c0bb6c4fe31c3a907763b3a7ba015799f7cf102248db777b7e7263
+  The fixed file also carries two hardening changes found in the same
+  audit, both verified with unit tests and the frozen-hash battery:
+  dropped parallel tool calls now receive an explicit not-executed
+  reply so no tool-call id is ever left unanswered (previously a
+  latent next-turn API rejection, never fired in any banked run), and
+  files newly created by a model now enter model_patch as new-file
+  diffs (previously listed as untracked but absent from the patch).
+  One dead import removed. Prompt construction untouched; all three
+  frozen prompt hashes reproduce byte for byte.
 
 RERUN PROTOCOL (trajectory)
 1. Move the pre-fix outputs folder aside with the ARCHIVED_ prefix and

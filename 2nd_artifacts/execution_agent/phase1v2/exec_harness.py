@@ -48,7 +48,6 @@ import argparse
 import hashlib
 import json
 import os
-import shutil
 import sys
 import time
 from datetime import datetime, timezone
@@ -205,9 +204,9 @@ MAX_OPEN_LINES = 400
 def _truncate(text):
     if len(text) <= MAX_OBS_CHARS:
         return text
-    return (text[:MAX_OBS_CHARS]
-            + "\n[truncated at %d chars; narrow the request]"
-            % MAX_OBS_CHARS)
+    marker = ("\n[truncated at %d chars; narrow the request]"
+              % MAX_OBS_CHARS)
+    return text[:MAX_OBS_CHARS - len(marker)] + marker
 
 
 def make_real_tools(repo_dir):
@@ -345,9 +344,15 @@ def capture_patch(repo_dir):
     _, diff = g("diff", "HEAD")
     _, untracked = g("ls-files", "--others", "--exclude-standard")
     _, head = g("rev-parse", "HEAD")
+    untracked_list = untracked.splitlines() if untracked.strip() else []
+    for upath in untracked_list:
+        # read-only new-file diff so created files are not lost from the
+        # patch the Docker evaluator consumes
+        _, udiff = g("diff", "--no-index", "--", "/dev/null", upath)
+        diff += udiff
     return {"model_patch": diff,
             "base_commit_at_capture": head.strip(),
-            "untracked_files": untracked.split() if untracked.strip() else [],
+            "untracked_files": untracked_list,
             "edited": bool(diff.strip())}
 
 
@@ -588,6 +593,14 @@ def run_live(config, prompt, provider, model, tools):
         box["messages"].append(ai)
         tc = calls[0]
         box["last_call_id"] = tc.get("id")
+        # extra parallel calls are not executed; every tool-call id must
+        # still receive a reply or the next request is rejected by the
+        # provider, so the extras get an explicit not-executed notice
+        for extra in calls[1:]:
+            box["messages"].append(ToolMessage(
+                content="not executed: one tool call per turn; resubmit "
+                        "this call on a later turn if still needed",
+                tool_call_id=extra.get("id")))
         return {"thought": thought, "name": tc["name"],
                 "args": tc.get("args") or {},
                 "usage": getattr(ai, "usage_metadata", None) or {},
