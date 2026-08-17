@@ -1,0 +1,153 @@
+{
+  "patch_mode": "source-only",
+  "cells": [
+    {
+      "cell": "noplan_C",
+      "run": 1,
+      "artifact": "exec_noplan_astropy__astropy-12907_planner-none_executor-claude-sonnet-4-6_run1.json",
+      "prediction_file": "pred_noplan_C_run1.jsonl",
+      "patch_sha256": "0172ca0d430e58fc42e46d478f879e667a9a6e262295d7b49aea68cbc53d5986",
+      "patch_chars": 504,
+      "files_kept": [
+        "astropy/modeling/separable.py"
+      ],
+      "files_dropped": [
+        "astropy/modeling/tests/test_separable.py"
+      ],
+      "gold_fix_present": true
+    },
+    {
+      "cell": "noplan_G",
+      "run": 1,
+      "artifact": "exec_noplan_astropy__astropy-12907_planner-none_executor-gpt-5.6-terra_run1.json",
+      "prediction_file": "pred_noplan_G_run1.jsonl",
+      "patch_sha256": "0172ca0d430e58fc42e46d478f879e667a9a6e262295d7b49aea68cbc53d5986",
+      "patch_chars": 504,
+      "files_kept": [
+        "astropy/modeling/separable.py"
+      ],
+      "files_dropped": [
+        "astropy/modeling/tests/test_separable.py"
+      ],
+      "gold_fix_present": true
+    },
+    {
+      "cell": "unstructured_C",
+      "run": 1,
+      "artifact": "exec_unstructured_plan_astropy__astropy-12907_planner-claude-sonnet-4-6_executor-claude-sonnet-4-6_run1.json",
+      "prediction_file": "pred_unstructured_C_run1.jsonl",
+      "patch_sha256": "0172ca0d430e58fc42e46d478f879e667a9a6e262295d7b49aea68cbc53d5986",
+      "patch_chars": 504,
+      "files_kept": [
+        "astropy/modeling/separable.py"
+      ],
+      "files_dropped": [],
+      "gold_fix_present": true
+    },
+    {
+      "cell": "unstructured_G",
+      "run": 1,
+      "artifact": "exec_unstructured_plan_astropy__astropy-12907_planner-gpt-5.6-terra_executor-gpt-5.6-terra_run1.json",
+      "prediction_file": "pred_unstructured_G_run1.jsonl",
+      "patch_sha256": "0172ca0d430e58fc42e46d478f879e667a9a6e262295d7b49aea68cbc53d5986",
+      "patch_chars": 504,
+      "files_kept": [
+        "astropy/modeling/separable.py"
+      ],
+      "files_dropped": [
+        "astropy/modeling/tests/test_separable.py"
+      ],
+      "gold_fix_present": true
+    },
+    {
+      "cell": "trajectory_C",
+      "run": 2,
+      "artifact": "exec_trajectory_plan_astropy__astropy-12907_planner-claude-sonnet-4-6_executor-claude-sonnet-4-6_run2.json",
+      "prediction_file": "pred_trajectory_C_run2.jsonl",
+      "patch_sha256": "0172ca0d430e58fc42e46d478f879e667a9a6e262295d7b49aea68cbc53d5986",
+      "patch_chars": 504,
+      "files_kept": [
+        "astropy/modeling/separable.py"
+      ],
+      "files_dropped": [
+        "astropy/modeling/tests/test_separable.py"
+      ],
+      "gold_fix_present": true
+    },
+    {
+      "cell": "trajectory_G",
+      "run": 2,
+      "artifact": "exec_trajectory_plan_astropy__astropy-12907_planner-gpt-5.6-terra_executor-gpt-5.6-terra_run2.json",
+      "prediction_file": "pred_trajectory_G_run2.jsonl",
+      "patch_sha256": "0172ca0d430e58fc42e46d478f879e667a9a6e262295d7b49aea68cbc53d5986",
+      "patch_chars": 504,
+      "files_kept": [
+        "astropy/modeling/separable.py"
+      ],
+      "files_dropped": [
+        "astropy/modeling/tests/test_separable.py"
+      ],
+      "gold_fix_present": true
+    },
+    {
+      "cell": "structured_C",
+      "run": 1,
+      "artifact": "exec_structured_plan_astropy__astropy-12907_planner-claude-sonnet-4-6_executor-claude-sonnet-4-6_run1.json",
+      "prediction_file": "pred_structured_C_run1.jsonl",
+      "patch_sha256": "0172ca0d430e58fc42e46d478f879e667a9a6e262295d7b49aea68cbc53d5986",
+      "patch_chars": 504,
+      "files_kept": [
+        "astropy/modeling/separable.py"
+      ],
+      "files_dropped": [
+        "astropy/modeling/tests/test_separable.py"
+      ],
+      "gold_fix_present": true
+    },
+    {
+      "cell": "structured_G",
+      "run": 1,
+      "artifact": "exec_structured_plan_astropy__astropy-12907_planner-gpt-5.6-terra_executor-gpt-5.6-terra_run1.json",
+      "prediction_file": "pred_structured_G_run1.jsonl",
+      "patch_sha256": "0172ca0d430e58fc42e46d478f879e667a9a6e262295d7b49aea68cbc53d5986",
+      "patch_chars": 504,
+      "files_kept": [
+        "astropy/modeling/separable.py"
+      ],
+      "files_dropped": [
+        "astropy/modeling/tests/test_separable.py"
+      ],
+      "gold_fix_present": true
+    },
+    {
+      "cell": "dispatch_C",
+      "run": 1,
+      "artifact": "exec_dispatch_astropy__astropy-12907_planner-claude-sonnet-4-6_executor-claude-sonnet-4-6_scope-imperatives_run1.json",
+      "prediction_file": "pred_dispatch_C_run1.jsonl",
+      "patch_sha256": "0172ca0d430e58fc42e46d478f879e667a9a6e262295d7b49aea68cbc53d5986",
+      "patch_chars": 504,
+      "files_kept": [
+        "astropy/modeling/separable.py"
+      ],
+      "files_dropped": [
+        "astropy/modeling/tests/test_separable.py"
+      ],
+      "gold_fix_present": true
+    },
+    {
+      "cell": "dispatch_G",
+      "run": 1,
+      "artifact": "exec_dispatch_astropy__astropy-12907_planner-gpt-5.6-terra_executor-gpt-5.6-terra_scope-imperatives_run1.json",
+      "prediction_file": "pred_dispatch_G_run1.jsonl",
+      "patch_sha256": "0172ca0d430e58fc42e46d478f879e667a9a6e262295d7b49aea68cbc53d5986",
+      "patch_chars": 504,
+      "files_kept": [
+        "astropy/modeling/separable.py"
+      ],
+      "files_dropped": [
+        "astropy/modeling/tests/test_separable.py"
+      ],
+      "gold_fix_present": true
+    }
+  ]
+}

@@ -346,11 +346,12 @@ content lived in the plan's prose and the executor did the prose, not
 the steps. GPT executed its plan's work but swapped the order, source
 edit before test edit against its plan's steps 5 and 6, also unstated.
 Both landed the gold one-line fix at the gold hunk and added a
-nested-compound regression test; Docker pending, predictions logged
-(both predicted to resolve). Test hunks: C at 135 again, consistent
-with every prior C run; G at a fourth distinct location (138, after
-148, 56, 113); neither overlaps the held-out test hunks at 28 and
-52-59.
+nested-compound regression test; the predictions logged here held, and
+the source fix is Docker-confirmed (OB-28). Test hunks in run 2: C at
+135 again, consistent with every prior C run; G back at the 113
+region, in line with its other cells (the distinct 135-138 placement
+was the archived run 1); neither overlaps the held-out test hunks at
+28 and 52-59.
 Cells: C-traj exec, G-traj exec (phase1v2, run 2 canonical; run 1
 archived pre-truncation-fix, first sighting).
 Anchor: phase1v2 00_TRAJECTORY outputs run 2 artifacts, C t00 thought
@@ -423,8 +424,9 @@ longer rests on a cross-generation contrast.
 held-out patch
 What happened: the two models place their regression tests differently,
 and the more idiomatic choice is the risky one. GPT appends a
-standalone test function near the end of the test file in every run
-(113, 138, 113 across its cells here). Claude under noplan integrated
+standalone test function after an existing test in every run (canonical
+cells: 113 noplan, 112 unstructured, 113 trajectory run 2, 113
+structured; the archived trajectory run 1 sat in the 135-138 region). Claude under noplan integrated
 its test INTO the existing parametrized compound_models dict at the
 conventional location (line 52 region), which is exactly the region
 the held-out test patch rewrites; under trajectory Claude appended
@@ -450,14 +452,23 @@ evaluation. Docker prediction for every cell, dispatch included:
 resolved, on the single basis that each model_patch contains the
 reference one-line source edit. How the evaluator handles model test
 edits is settled by the Docker run itself, not predicted here.
+Docker addendum: the evaluation ran in source-only mode, test-file
+edits excluded from every prediction uniformly (decision and rationale
+in the docker_eval archive NOTES: two cells' test edits collide with
+the held-out region, and the resolved metric is defined by the
+held-out tests). The shared source patch resolved (OB-28). The
+contingent as-is predictions above were therefore never put to the
+evaluator; the fuzz-fallback question stays a local git fact,
+testable later with an as-is prediction set if ever wanted.
 Cells: all eight phase1v2 canonical exec cells plus both dispatch
 cells.
 Anchor: phase1v2 artifacts, test-edit hunk headers; application
 rehearsal transcript (clone at d16bfe05, apply order, rc values).
 Track: 1, feeds the Docker methodology notes.
 Papers: to fill in the lit pass.
-Status: single rehearsal per cell; nothing is confirmed until Docker
-runs.
+Status: local rehearsal facts stand as recorded; the source fix is
+Docker-confirmed in source-only mode; the as-is application question
+was not evaluated.
 
 
 ## OB-23 execution cost tracks prescribed scope, and the orderings
@@ -590,4 +601,37 @@ edit at t03 preceding any separable.py open; OB-19 anchors for the
 free-order contrast.
 Track: 1, feeds 2 and 4.
 Papers: to fill in the lit pass.
+Status: single run; the free-order contrast legs are two executions
+deep.
 Status: single run; the free-order contrast leg is two runs.
+
+## OB-28 ten cells, one byte-identical source patch, one confirmed
+verdict
+What happened: the prediction build for Docker showed that all ten
+canonical cells (four configs, both executors, plus both dispatch
+pilots) produce byte-identical source diffs once test-file edits are
+set aside: one hunk, the reference one-line change, sha256
+0172ca0d430e58fc42e46d478f879e667a9a6e262295d7b49aea68cbc53d5986,
+cross-verified byte for byte on two machines. The evaluation therefore
+ran once and the verdict covers every cell: the gold health check
+resolved first, then the shared patch resolved, applied cleanly,
+FAIL_TO_PASS 2 of 2, PASS_TO_PASS 13 of 13. First Docker-confirmed
+result of the campaign. Consequence for the framing: on this instance,
+outcome does not discriminate between plan representations at all;
+every representation, including none, reached the same fix. What
+discriminates is cost (27,979 to 178,225 tokens, 6 to 16 turns),
+behavior (OB-19 through OB-27), and provenance (16 of 16 recorded
+under dispatch against 0 of 28 volunteered without it). Resolved is
+the floor this instance sets, not the finding.
+Cells: all ten canonical cells.
+Anchor: docker_eval archive for the instance: predictions/manifest.json
+(one repeated patch_sha256 across all ten cells), gold.gold_check.json
+resolved_ids, the spine_shared_fix report.json
+(patch_successfully_applied true, resolved true, and the test splits
+above), and the applied patch.diff in the logs hashing to the manifest
+value.
+Track: 1 and 5, feeds the methodology and the paper framing.
+Papers: to fill in the lit pass.
+Status: confirmed (Docker), single instance; the
+outcome-does-not-discriminate claim is about this instance and run set
+only.

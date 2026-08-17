@@ -1,0 +1,33 @@
+DOCKER EVALUATION NOTES (Aug 16, 2026)
+
+Environment: WSL2, Ubuntu-24.04 (fresh distro, native to this run),
+Docker Desktop on Windows with WSL2 integration, venv ~/swebench-venv.
+swebench version: <fill from: pip show swebench>
+python version: <fill from: python --version inside the venv>
+Machine: the canonical local machine (Windows host); all runs
+executed locally.
+
+What ran, in order:
+1. Predictions built by build_predictions.py, patch-mode source-only,
+   from the canonical phase1v2 and dispatch artifacts. All ten cells
+   produced byte-identical source patches, sha256
+   0172ca0d430e58fc42e46d478f879e667a9a6e262295d7b49aea68cbc53d5986.
+   Cross-verified byte-for-byte against an independently built set.
+2. Gold health check (run_id gold_check): official gold patch,
+   resolved. Proves the harness before our patch touched it.
+3. Shared fix evaluation (run_id spine_shared_fix): prediction file
+   pred_noplan_C_run1.jsonl carrying the shared patch. RESOLVED.
+   patch_successfully_applied true, FAIL_TO_PASS 2/2,
+   PASS_TO_PASS 13/13. The applied patch.diff in the logs hashes to
+   the frozen value above.
+
+Scope of the verdict: the ten source patches are hash-identical, so
+this single evaluation covers all ten cells (noplan, unstructured,
+trajectory run 2, structured no-tag, dispatch; both executors).
+Test-file edits were excluded from predictions uniformly across all
+cells (source-only mode); two of the cells' test edits collide with
+the held-out test patch region, and the resolved metric is defined by
+the held-out tests. Disclosed here and in the manifest.
+
+"Confirmed" usage: as of this run, the shared source fix resolving
+astropy__astropy-12907 is Docker-confirmed. Nothing else is.
