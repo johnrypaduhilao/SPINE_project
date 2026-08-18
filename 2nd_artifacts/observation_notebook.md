@@ -352,12 +352,19 @@ the source fix is Docker-confirmed (OB-28). Test hunks in run 2: C at
 region, in line with its other cells (the distinct 135-138 placement
 was the archived run 1); neither overlaps the held-out test hunks at
 28 and 52-59.
+Record-level signal in the plan artifact itself: 1 of 34 records
+carries the named plan (inside the final done summary); the other 33
+are deliberation narration (16 search, 17 open). This is the
+noisy-records problem card, measured.
 Cells: C-traj exec, G-traj exec (phase1v2, run 2 canonical; run 1
 archived pre-truncation-fix, first sighting).
 Anchor: phase1v2 00_TRAJECTORY outputs run 2 artifacts, C t00 thought
 "I'll follow the plan", source edit t05, test edit t09, no deviation
 statement anywhere; G t09/t10 edit order against plan parsed_steps 5
-and 6. Same signals in the archived run 1 (C t06/t10, G t09/t10).
+and 6. Same signals in the archived run 1 (C t06/t10, G t09/t10);
+plan-artifact record split anchored in the plan_trajectory readable
+artifact (done summary heading "Plan for Resolving", 1 hit in the
+parsed steps).
 Track: 2, with a foot in 1 and 4.
 Papers: to fill in the lit pass.
 Status: replicated (both cells, archived run plus canonical rerun; the
